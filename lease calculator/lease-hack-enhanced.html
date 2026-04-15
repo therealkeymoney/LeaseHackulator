@@ -107,6 +107,17 @@
                                 <div class="col-md-6" id="fedUsedCreditDivA"><label for="fedUsedCreditA" class="form-label">Federal Used EV Credit</label><select id="fedUsedCreditA" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div>
                                 <div class="col-md-6" id="stateNewCreditDivA"><label for="stateNewCreditA" class="form-label">State New EV Credit</label><select id="stateNewCreditA" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div>
                                 <div class="col-md-6" id="stateUsedCreditDivA"><label for="stateUsedCreditA" class="form-label">State Used EV Credit</label><select id="stateUsedCreditA" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div>
+                                <div class="col-12"><div id="incentiveStatusA" class="small" style="color:var(--text-muted-dark);">Incentives auto-populate from MarketCheck when VIN + ZIP are set.</div></div>
+                            </div>
+
+                            <h4 class="form-section-title">Energy / Fuel Cost</h4>
+                            <div class="row g-3">
+                                <div class="col-md-6"><label for="fuelTypeA" class="form-label">Fuel Type</label><select id="fuelTypeA" class="form-select"><option value="gas">Gasoline</option><option value="ev">Electric (EV)</option><option value="phev">Plug-in Hybrid (PHEV)</option><option value="hev">Hybrid (HEV)</option></select></div>
+                                <div class="col-md-6"><label for="mpgA" class="form-label">Combined MPG / MPGe</label><input type="number" step="0.1" id="mpgA" class="form-control" value="30"></div>
+                                <div class="col-md-6"><label for="ppgA" class="form-label">Price Per Gallon (ppg)</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" id="ppgA" class="form-control" value="3.75"></div></div>
+                                <div class="col-md-6"><label for="l2SharePctA" class="form-label">L2 / L3 Charging Mix</label><div class="input-group"><input type="number" step="1" min="0" max="100" id="l2SharePctA" class="form-control" value="80"><span class="input-group-text">% L2</span></div></div>
+                                <div class="col-md-6"><label for="ppkwhL2A" class="form-label">Price Per kWh (L2 - Home)</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.001" id="ppkwhL2A" class="form-control" value="0.170"></div></div>
+                                <div class="col-md-6"><label for="ppkwhL3A" class="form-label">Price Per kWh (L3 - DCFC)</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.001" id="ppkwhL3A" class="form-control" value="0.430"></div></div>
                             </div>
 
                             <div class="form-check form-switch my-4 fs-5"><input class="form-check-input" type="checkbox" role="switch" id="zeroDriveOffA"><label class="form-check-label" for="zeroDriveOffA">Sign & Drive (Zero Drive-Off)</label></div>
@@ -126,7 +137,8 @@
                             <h4 class="form-section-title">Vehicle Details</h4><div class="row g-3"><div class="col-md-6"><label for="vinB" class="form-label">VIN</label><input type="text" id="vinB" class="form-control" maxlength="17"></div><div class="col-md-6"><label for="zipB" class="form-label">ZIP Code</label><input type="text" id="zipB" class="form-control" maxlength="5"></div><div class="col-md-3"><label for="yearB" class="form-label">Year</label><input type="number" id="yearB" class="form-control" placeholder="from VIN"></div><div class="col-md-5"><label for="manufacturerB" class="form-label">Manufacturer</label><select id="manufacturerB" class="form-select"></select></div><div class="col-md-4"><label for="modelB" class="form-label">Model</label><select id="modelB" class="form-select"></select></div><div class="col-md-6"><label for="msrpB" class="form-label">MSRP</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="msrpB" class="form-control"></div></div><div class="col-md-6"><label for="sellingPriceB" class="form-label">Selling Price</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="sellingPriceB" class="form-control"></div></div><div class="col-md-6"><label for="conditionB" class="form-label">Condition</label><select id="conditionB" class="form-select"><option value="new">New</option><option value="cpo">CPO</option><option value="used">Used</option></select></div><div class="col-md-6"><label for="residualPercentB" class="form-label">Residual %</label><div class="input-group"><input type="number" step="0.1" id="residualPercentB" class="form-control"><span class="input-group-text">%</span></div></div></div>
                             <h4 class="form-section-title">Lease Structure</h4><div class="row g-3"><div class="col-md-4"><label for="termB" class="form-label">Term</label><select id="termB" class="form-select"></select></div><div class="col-md-4"><label for="mileageB" class="form-label">Mileage/Yr</label><select id="mileageB" class="form-select"></select></div><div class="col-md-4"><label for="creditTierB" class="form-label">Credit Tier</label><select id="creditTierB" class="form-select"></select></div><div class="col-md-12"><label for="leaseTypeB" class="form-label">Lease Type</label><select id="leaseTypeB" class="form-select"><option value="standard">Standard</option><option value="onepay">One-Pay</option><option value="subvented">Subvented</option></select></div><div class="col-md-6"><label for="mfB" class="form-label">Money Factor</label><input type="number" step="0.00001" id="mfB" class="form-control"></div><div class="col-md-6" id="subventedMfDivB" style="display:none;"><label for="subventedMfRateB" class="form-label" style="color:var(--accent-color)">Subvented MF</label><input type="number" step="0.00001" id="subventedMfRateB" class="form-control border-danger" value="0.00125"></div></div>
                             <h4 class="form-section-title">Fees & Taxes</h4><div class="row g-3 align-items-end"><div class="col"><label for="acqFeeB" class="form-label">Acquisition</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="acqFeeB" class="form-control"></div></div><div class="col-auto"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="capAcqFeeB"><label class="form-check-label" for="capAcqFeeB">Cap</label></div></div><div class="col"><label for="docFeeB" class="form-label">Dealer/Doc</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="docFeeB" class="form-control"></div></div><div class="col-auto"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="capDocFeeB"><label class="form-check-label" for="capDocFeeB">Cap</label></div></div></div><div class="row g-3 mt-2 align-items-end"><div class="col"><label for="regFeeB" class="form-label">Registration</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="regFeeB" class="form-control"></div></div><div class="col-auto"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="capRegFeeB"><label class="form-check-label" for="capRegFeeB">Cap</label></div></div><div class="col"><label for="dispFeeB" class="form-label">Disposition</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="dispFeeB" class="form-control"></div></div><div class="col-auto"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="capDispFeeB" checked><label class="form-check-label" for="capDispFeeB">Cap</label></div></div></div><div class="row g-3 mt-2"><div class="col-md-6"><label for="taxRateB" class="form-label">Tax Rate</label><div class="input-group"><input type="number" step="0.01" id="taxRateB" class="form-control"><span class="input-group-text">%</span></div></div><div class="col-md-6"><label for="taxMethodB" class="form-label">Tax Calculation Method</label><select id="taxMethodB" class="form-select"></select></div></div>
-                            <h4 class="form-section-title">Incentives & Down Payments</h4><div class="row g-3"><div class="col-md-6"><label for="downB" class="form-label">Down Payment</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="downB" class="form-control" value="0"></div></div><div class="col-md-6"><label for="tradeB" class="form-label">Trade-in Equity</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="tradeB" class="form-control" value="0"></div></div><div class="col-md-12"><label for="tradeAppB" class="form-label">Trade Equity Application</label><select id="tradeAppB" class="form-select"><option value="ccr">Upfront (Cap Cost Reduction)</option><option value="split">Split 50/50 (Upfront & Buyout)</option><option value="buyout">At Buyout (Purchase Price Reduction)</option></select></div><div class="col-md-6"><label for="leaseTaxedB" class="form-label">Taxed Incentives</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="leaseTaxedB" class="form-control" value="0"></div></div><div class="col-md-6"><label for="leaseUntaxedB" class="form-label">Untaxed Incentives</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="leaseUntaxedB" class="form-control" value="0"></div></div><div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="incentiveOverrideB"><label class="form-check-label" for="incentiveOverrideB">Manual Incentive Override</label></div></div></div><div class="row g-3 mt-2"><div class="col-md-6" id="fedNewCreditDivB"><label for="fedNewCreditB" class="form-label">Federal New EV Credit</label><select id="fedNewCreditB" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div><div class="col-md-6" id="fedUsedCreditDivB"><label for="fedUsedCreditB" class="form-label">Federal Used EV Credit</label><select id="fedUsedCreditB" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div><div class="col-md-6" id="stateNewCreditDivB"><label for="stateNewCreditB" class="form-label">State New EV Credit</label><select id="stateNewCreditB" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div><div class="col-md-6" id="stateUsedCreditDivB"><label for="stateUsedCreditB" class="form-label">State Used EV Credit</label><select id="stateUsedCreditB" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div></div>
+                            <h4 class="form-section-title">Incentives & Down Payments</h4><div class="row g-3"><div class="col-md-6"><label for="downB" class="form-label">Down Payment</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="downB" class="form-control" value="0"></div></div><div class="col-md-6"><label for="tradeB" class="form-label">Trade-in Equity</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="tradeB" class="form-control" value="0"></div></div><div class="col-md-12"><label for="tradeAppB" class="form-label">Trade Equity Application</label><select id="tradeAppB" class="form-select"><option value="ccr">Upfront (Cap Cost Reduction)</option><option value="split">Split 50/50 (Upfront & Buyout)</option><option value="buyout">At Buyout (Purchase Price Reduction)</option></select></div><div class="col-md-6"><label for="leaseTaxedB" class="form-label">Taxed Incentives</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="leaseTaxedB" class="form-control" value="0"></div></div><div class="col-md-6"><label for="leaseUntaxedB" class="form-label">Untaxed Incentives</label><div class="input-group"><span class="input-group-text">$</span><input type="number" id="leaseUntaxedB" class="form-control" value="0"></div></div><div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="incentiveOverrideB"><label class="form-check-label" for="incentiveOverrideB">Manual Incentive Override</label></div></div></div><div class="row g-3 mt-2"><div class="col-md-6" id="fedNewCreditDivB"><label for="fedNewCreditB" class="form-label">Federal New EV Credit</label><select id="fedNewCreditB" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div><div class="col-md-6" id="fedUsedCreditDivB"><label for="fedUsedCreditB" class="form-label">Federal Used EV Credit</label><select id="fedUsedCreditB" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div><div class="col-md-6" id="stateNewCreditDivB"><label for="stateNewCreditB" class="form-label">State New EV Credit</label><select id="stateNewCreditB" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div><div class="col-md-6" id="stateUsedCreditDivB"><label for="stateUsedCreditB" class="form-label">State Used EV Credit</label><select id="stateUsedCreditB" class="form-select"><option value="auto">Auto</option><option value="force">Force Apply</option><option value="none">None</option></select></div><div class="col-12"><div id="incentiveStatusB" class="small" style="color:var(--text-muted-dark);">Incentives auto-populate from MarketCheck when VIN + ZIP are set.</div></div></div>
+                            <h4 class="form-section-title">Energy / Fuel Cost</h4><div class="row g-3"><div class="col-md-6"><label for="fuelTypeB" class="form-label">Fuel Type</label><select id="fuelTypeB" class="form-select"><option value="gas">Gasoline</option><option value="ev">Electric (EV)</option><option value="phev">Plug-in Hybrid (PHEV)</option><option value="hev">Hybrid (HEV)</option></select></div><div class="col-md-6"><label for="mpgB" class="form-label">Combined MPG / MPGe</label><input type="number" step="0.1" id="mpgB" class="form-control" value="30"></div><div class="col-md-6"><label for="ppgB" class="form-label">Price Per Gallon (ppg)</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.01" id="ppgB" class="form-control" value="3.75"></div></div><div class="col-md-6"><label for="l2SharePctB" class="form-label">L2 / L3 Charging Mix</label><div class="input-group"><input type="number" step="1" min="0" max="100" id="l2SharePctB" class="form-control" value="80"><span class="input-group-text">% L2</span></div></div><div class="col-md-6"><label for="ppkwhL2B" class="form-label">Price Per kWh (L2 - Home)</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.001" id="ppkwhL2B" class="form-control" value="0.170"></div></div><div class="col-md-6"><label for="ppkwhL3B" class="form-label">Price Per kWh (L3 - DCFC)</label><div class="input-group"><span class="input-group-text">$</span><input type="number" step="0.001" id="ppkwhL3B" class="form-control" value="0.430"></div></div></div>
                             <div class="form-check form-switch my-4 fs-5"><input class="form-check-input" type="checkbox" role="switch" id="zeroDriveOffB"><label class="form-check-label" for="zeroDriveOffB">Sign & Drive (Zero Drive-Off)</label></div>
                         </form>
                         <div class="d-grid gap-2"><button type="button" class="btn btn-calculate" onclick="calculateLease('B')">Calculate Vehicle B</button></div>
@@ -248,18 +260,48 @@
                     const feeData = STATE_FEE_DATA[state] || STATE_FEE_DATA.default;
                     document.getElementById(`regFee${side}`).value = feeData.regFee;
                 }
+                const vin = document.getElementById(`vin${side}`).value;
+                if (vin.length === 17) fetchIncentives(vin, zip, side);
             }
         }
 
         async function fetchIncentives(vin, zip, side) {
-             if (document.getElementById(`incentiveOverride${side}`).checked) return;
-             try {
-                const response = await fetch(`https://marketcheck-prod.apigee.net/v2/incentives/car?api_key=${MARKETCHECK_API_KEY}&vin=${vin}&zip=${zip}`);
-                if (!response.ok) throw new Error('MarketCheck API request failed');
+            const statusEl = document.getElementById(`incentiveStatus${side}`);
+            const setStatus = (msg, color) => { if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color || 'var(--text-muted-dark)'; } };
+            if (document.getElementById(`incentiveOverride${side}`).checked) { setStatus('Manual override on — API fetch skipped.'); return; }
+            if (!vin || vin.length < 17 || !zip || zip.length < 5) { setStatus('Enter VIN (17) + ZIP (5) to fetch incentives.'); return; }
+            setStatus('Fetching incentives from MarketCheck…');
+            // MarketCheck incentives endpoint — real path is /v2/incentives on api.marketcheck.com
+            const url = `https://api.marketcheck.com/v2/incentives?api_key=${encodeURIComponent(MARKETCHECK_API_KEY)}&vin=${encodeURIComponent(vin)}&zip=${encodeURIComponent(zip)}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
-                document.getElementById(`leaseTaxed${side}`).value = data.lease_cash || 0;
-                document.getElementById(`leaseUntaxed${side}`).value = data.apr_cash || 0;
-            } catch (error) { console.error("Incentive Error:", error); }
+
+                // MarketCheck returns an array of incentive objects; sum by category.
+                // Fall back to single-object shape if present.
+                let leaseTaxed = 0, leaseUntaxed = 0;
+                const items = Array.isArray(data) ? data : (Array.isArray(data.incentives) ? data.incentives : []);
+                if (items.length) {
+                    items.forEach(it => {
+                        const cat = (it.category || it.type || '').toLowerCase();
+                        const amt = Number(it.amount || it.value || it.cash || 0) || 0;
+                        if (cat.includes('lease')) leaseTaxed += amt;
+                        else leaseUntaxed += amt;
+                    });
+                } else {
+                    leaseTaxed   = Number(data.lease_cash || 0);
+                    leaseUntaxed = Number(data.apr_cash   || 0);
+                }
+
+                document.getElementById(`leaseTaxed${side}`).value   = leaseTaxed;
+                document.getElementById(`leaseUntaxed${side}`).value = leaseUntaxed;
+                setStatus(`Loaded ${items.length || (leaseTaxed+leaseUntaxed>0?1:0)} incentive(s): $${leaseTaxed.toLocaleString()} taxed + $${leaseUntaxed.toLocaleString()} untaxed.`, '#28a745');
+                calculateLease(side);
+            } catch (error) {
+                console.error("Incentive Error:", error);
+                setStatus(`Could not fetch incentives: ${error.message}. Enter manually or toggle override.`, '#dc3545');
+            }
         }
 
         function handleManufacturerChange(side) {
@@ -303,7 +345,7 @@
 
         function gatherFormData(side) {
             const data = {};
-            const fields = ["vin","zip","year","manufacturer","model","msrp","sellingPrice","condition","residualPercent","term","mileage","creditTier","leaseType","mf","subventedMfRate","acqFee","docFee","regFee","dispFee","taxRate","taxMethod","leaseTaxed","leaseUntaxed","down","trade","tradeApp","fedNewCredit","fedUsedCredit","stateNewCredit","stateUsedCredit"];
+            const fields = ["vin","zip","year","manufacturer","model","msrp","sellingPrice","condition","residualPercent","term","mileage","creditTier","leaseType","mf","subventedMfRate","acqFee","docFee","regFee","dispFee","taxRate","taxMethod","leaseTaxed","leaseUntaxed","down","trade","tradeApp","fedNewCredit","fedUsedCredit","stateNewCredit","stateUsedCredit","fuelType","mpg","ppg","ppkwhL2","ppkwhL3","l2SharePct"];
             fields.forEach(f => {
                 const el = document.getElementById(`${f}${side}`);
                 const capEl = document.getElementById(`cap${f.charAt(0).toUpperCase() + f.slice(1)}${side}`);
@@ -400,10 +442,65 @@
             const effectiveMonthlyCost = totalLeaseCost / formData.term;
             const netBuyoutCost = residualValue - tradeEquityForBuyout;
 
+            // ---- Effective Selling Price (reflects all incentives applied pre-cap) ----
+            // Selling Price entered by user is the dealer-agreed price (MSRP minus dealer discount).
+            // The "effective" price the customer actually finances is that price minus every
+            // lease-cap-reducing incentive (taxed/untaxed manufacturer + federal/state EV).
+            const totalLeaseIncentives = formData.leaseTaxed + formData.leaseUntaxed + fedEV + stateEV;
+            const dealerDiscount = Math.max(formData.msrp - formData.sellingPrice, 0);
+            const effectiveSellingPrice = formData.sellingPrice - totalLeaseIncentives;
+
+            // ---- Fuel / Energy Cost ----
+            const annualMiles = Number(formData.mileage) || 0;
+            const fuelCost = calculateEnergyCost(formData, annualMiles);
+
             return {
                 grossCapCost, capCostReduction, netCapCost, residualValue, standardMF, currentMF, fedEV, stateEV,
                 monthlyDepreciation, monthlyRentCharge, baseMonthlyPayment, finalMonthlyPayment, totalDueAtSigning,
-                totalLeaseCost, effectiveMonthlyCost, netBuyoutCost, apr: currentMF * 2400
+                totalLeaseCost, effectiveMonthlyCost, netBuyoutCost, apr: currentMF * 2400,
+                totalLeaseIncentives, dealerDiscount, effectiveSellingPrice,
+                annualFuelCost: fuelCost.annual, monthlyFuelCost: fuelCost.monthly, perMileFuelCost: fuelCost.perMile,
+                fuelBreakdown: fuelCost.breakdown
+            };
+        }
+
+        /**
+         * Energy / fuel cost calculation.
+         * For EV: blends L2 (home) and L3 (DCFC) $/kWh by the user's charging mix.
+         * For PHEV: 60% electric (blended L2/L3) + 40% gas at ppg.
+         * For gas/HEV: uses ppg and MPG.
+         */
+        function calculateEnergyCost(f, annualMiles) {
+            const mpg = Number(f.mpg) || 0;
+            const ppg = Number(f.ppg) || 0;
+            const l2Share = Math.min(Math.max(Number(f.l2SharePct) || 0, 0), 100) / 100;
+            const ppkwhBlend = (Number(f.ppkwhL2) || 0) * l2Share + (Number(f.ppkwhL3) || 0) * (1 - l2Share);
+            if (!annualMiles || !mpg) return { annual: 0, monthly: 0, perMile: 0, breakdown: '' };
+
+            let annual = 0, perMile = 0, breakdown = '';
+            if (f.fuelType === 'ev') {
+                const kwhPerMile = 33.705 / mpg; // MPGe -> kWh/mi
+                annual  = annualMiles * kwhPerMile * ppkwhBlend;
+                perMile = kwhPerMile * ppkwhBlend;
+                breakdown = `${(kwhPerMile).toFixed(3)} kWh/mi @ $${ppkwhBlend.toFixed(3)}/kWh (L2 ${(l2Share*100).toFixed(0)}% / L3 ${((1-l2Share)*100).toFixed(0)}%)`;
+            } else if (f.fuelType === 'phev') {
+                const kwhPerMile = 33.705 / mpg;
+                const elecFrac = 0.60;
+                const electric = annualMiles * elecFrac * kwhPerMile * ppkwhBlend;
+                const gas = annualMiles * (1 - elecFrac) / Math.max(mpg * 0.5, 1) * ppg;
+                annual = electric + gas;
+                perMile = annual / annualMiles;
+                breakdown = `PHEV blend: 60% electric + 40% gas`;
+            } else {
+                annual = (annualMiles / mpg) * ppg;
+                perMile = ppg / mpg;
+                breakdown = `${mpg.toFixed(1)} MPG @ $${ppg.toFixed(2)}/gal`;
+            }
+            return {
+                annual: Math.round(annual * 100) / 100,
+                monthly: Math.round(annual / 12 * 100) / 100,
+                perMile: Math.round(perMile * 10000) / 10000,
+                breakdown
             };
         }
 
@@ -418,7 +515,25 @@
                 const savings = (results.netCapCost + results.residualValue) * mfDiff * formData.term;
                 specialLeaseDetails = `<h6>${formData.leaseType === 'onepay' ? 'One-Pay' : 'Subvented'} Savings</h6><table class="table detail-table table-sm"><tr><td>Standard MF:</td><td>${results.standardMF.toFixed(5)}</td></tr><tr><td>Effective MF:</td><td>${results.currentMF.toFixed(5)}</td></tr><tr><td>Total Savings:</td><td class="text-success fw-bold">${f(savings)}</td></tr></table>`;
             }
-            container.innerHTML = `<h3 class="text-center mt-3">Lease Summary</h3><div class="row text-center my-3"><div class="col-6"><h5>${formData.leaseType === 'onepay' ? 'One-Pay Amount' : 'Monthly'}</h5><p class="result-item">${f(formData.leaseType === 'onepay' ? results.baseMonthlyPayment * formData.term : results.baseMonthlyPayment)}</p></div><div class="col-6"><h5>Total Drive-Off</h5><p class="result-item">${f(results.totalDueAtSigning)}</p></div></div><div class="row"><div class="col-md-6"><h6>Lease Details</h6><table class="table detail-table table-sm"><tr><td>Gross Cap Cost:</td><td>${f(results.grossCapCost)}</td></tr><tr><td>Cap Reduction:</td><td>-${f(results.capCostReduction)}</td></tr><tr><td>Net Cap Cost:</td><td>${f(results.netCapCost)}</td></tr><tr><td>Depreciation:</td><td>${f(results.monthlyDepreciation)}</td></tr><tr><td>Rent Charge:</td><td>${f(results.monthlyRentCharge)}</td></tr></table></div><div class="col-md-6"><h6>Buyout Details</h6><table class="table detail-table table-sm"><tr><td>Residual Value:</td><td>${f(results.residualValue)}</td></tr><tr><td>EV Credits:</td><td>-${f(results.fedEV + results.stateEV)}</td></tr><tr><td>Applied Equity:</td><td>-${f(formData.tradeApp === 'split' ? formData.trade / 2 : (formData.tradeApp === 'buyout' ? formData.trade : 0))}</td></tr><tr><td class="fw-bold">Net Buyout:</td><td class="fw-bold">${f(results.netBuyoutCost)}</td></tr></table></div></div>${specialLeaseDetails}`;
+            const priceBlock = `<h6>Effective Price Breakdown</h6><table class="table detail-table table-sm">
+                <tr><td>MSRP:</td><td>${f(formData.msrp)}</td></tr>
+                <tr><td>Dealer Discount:</td><td>-${f(results.dealerDiscount)}</td></tr>
+                <tr><td>Selling Price (contract):</td><td>${f(formData.sellingPrice)}</td></tr>
+                <tr><td>Manufacturer Incentives (taxed):</td><td>-${f(formData.leaseTaxed)}</td></tr>
+                <tr><td>Manufacturer Incentives (untaxed):</td><td>-${f(formData.leaseUntaxed)}</td></tr>
+                <tr><td>Federal EV Credit:</td><td>-${f(results.fedEV)}</td></tr>
+                <tr><td>State EV Credit:</td><td>-${f(results.stateEV)}</td></tr>
+                <tr><td class="fw-bold">Effective Selling Price:</td><td class="fw-bold">${f(results.effectiveSellingPrice)}</td></tr>
+            </table>`;
+            const fuelBlock = `<h6>Energy / Fuel Cost</h6><table class="table detail-table table-sm">
+                <tr><td>Fuel Type:</td><td>${(formData.fuelType || 'gas').toUpperCase()}</td></tr>
+                <tr><td>Basis:</td><td>${results.fuelBreakdown || '—'}</td></tr>
+                <tr><td>Annual Miles:</td><td>${Number(formData.mileage).toLocaleString()}</td></tr>
+                <tr><td>Annual Fuel Cost:</td><td>${f(results.annualFuelCost)}</td></tr>
+                <tr><td>Monthly Fuel Cost:</td><td>${f(results.monthlyFuelCost)}</td></tr>
+                <tr><td>Cost Per Mile:</td><td>$${(results.perMileFuelCost||0).toFixed(4)}</td></tr>
+            </table>`;
+            container.innerHTML = `<h3 class="text-center mt-3">Lease Summary</h3><div class="row text-center my-3"><div class="col-6"><h5>${formData.leaseType === 'onepay' ? 'One-Pay Amount' : 'Monthly'}</h5><p class="result-item">${f(formData.leaseType === 'onepay' ? results.baseMonthlyPayment * formData.term : results.baseMonthlyPayment)}</p></div><div class="col-6"><h5>Total Drive-Off</h5><p class="result-item">${f(results.totalDueAtSigning)}</p></div></div><div class="row"><div class="col-md-6"><h6>Lease Details</h6><table class="table detail-table table-sm"><tr><td>Gross Cap Cost:</td><td>${f(results.grossCapCost)}</td></tr><tr><td>Cap Reduction:</td><td>-${f(results.capCostReduction)}</td></tr><tr><td>Net Cap Cost:</td><td>${f(results.netCapCost)}</td></tr><tr><td>Depreciation:</td><td>${f(results.monthlyDepreciation)}</td></tr><tr><td>Rent Charge:</td><td>${f(results.monthlyRentCharge)}</td></tr></table></div><div class="col-md-6"><h6>Buyout Details</h6><table class="table detail-table table-sm"><tr><td>Residual Value:</td><td>${f(results.residualValue)}</td></tr><tr><td>EV Credits:</td><td>-${f(results.fedEV + results.stateEV)}</td></tr><tr><td>Applied Equity:</td><td>-${f(formData.tradeApp === 'split' ? formData.trade / 2 : (formData.tradeApp === 'buyout' ? formData.trade : 0))}</td></tr><tr><td class="fw-bold">Net Buyout:</td><td class="fw-bold">${f(results.netBuyoutCost)}</td></tr></table></div></div><div class="row mt-3"><div class="col-md-6">${priceBlock}</div><div class="col-md-6">${fuelBlock}</div></div>${specialLeaseDetails}`;
             container.style.display = 'block';
         }
 

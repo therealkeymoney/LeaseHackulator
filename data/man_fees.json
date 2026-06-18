@@ -15,17 +15,11 @@
       },
       "Chrysler": {
         "acquisition": 695,
-        "disposition": [
-          400,
-          495
-        ]
+        "disposition": [400, 495]
       },
       "Dodge": {
         "acquisition": 695,
-        "disposition": [
-          400,
-          495
-        ]
+        "disposition": [400, 495]
       },
       "Ford": {
         "acquisition": 695,
@@ -37,10 +31,7 @@
       },
       "Jeep": {
         "acquisition": 695,
-        "disposition": [
-          400,
-          495
-        ]
+        "disposition": [400, 495]
       },
       "Lincoln": {
         "acquisition": 695,
@@ -48,10 +39,7 @@
       },
       "Ram": {
         "acquisition": 695,
-        "disposition": [
-          400,
-          495
-        ]
+        "disposition": [400, 495]
       },
       "Tesla": {
         "acquisition": 695,
@@ -61,38 +49,23 @@
     "japaneseBrands": {
       "Acura": {
         "acquisition": 595,
-        "disposition": [
-          350,
-          400
-        ]
+        "disposition": [350, 400]
       },
       "Honda": {
         "acquisition": 595,
-        "disposition": [
-          350,
-          400
-        ]
+        "disposition": [350, 400]
       },
       "Infiniti": {
         "acquisition": 695,
-        "disposition": [
-          350,
-          400
-        ]
+        "disposition": [350, 400]
       },
       "Lexus": {
         "acquisition": 650,
-        "disposition": [
-          350,
-          400
-        ]
+        "disposition": [350, 400]
       },
       "Mazda": {
         "acquisition": 650,
-        "disposition": [
-          350,
-          395
-        ]
+        "disposition": [350, 395]
       },
       "Mitsubishi": {
         "acquisition": 595,
@@ -100,53 +73,29 @@
       },
       "Nissan": {
         "acquisition": 695,
-        "disposition": [
-          350,
-          400
-        ]
+        "disposition": [350, 400]
       },
       "Subaru": {
-        "acquisition": [
-          595,
-          650
-        ],
-        "disposition": [
-          350,
-          395
-        ]
+        "acquisition": [595, 650],
+        "disposition": [350, 395]
       },
       "Toyota": {
         "acquisition": 650,
-        "disposition": [
-          350,
-          400
-        ]
+        "disposition": [350, 400]
       }
     },
     "koreanBrands": {
       "Genesis": {
-        "acquisition": [
-          695,
-          795
-        ],
+        "acquisition": [695, 795],
         "disposition": 400
       },
       "Hyundai": {
-        "acquisition": [
-          695,
-          795
-        ],
+        "acquisition": [695, 795],
         "disposition": 400
       },
       "Kia": {
-        "acquisition": [
-          695,
-          795
-        ],
-        "disposition": [
-          400,
-          450
-        ]
+        "acquisition": [695, 795],
+        "disposition": [400, 450]
       }
     },
     "europeanBrands": {
@@ -156,10 +105,7 @@
       },
       "Audi": {
         "acquisition": 895,
-        "disposition": [
-          395,
-          495
-        ]
+        "disposition": [395, 495]
       },
       "BMW": {
         "acquisition": 925,
@@ -174,38 +120,20 @@
         "disposition": 395
       },
       "MercedesBenz": {
-        "acquisition": [
-          895,
-          995
-        ],
-        "disposition": [
-          395,
-          495
-        ]
+        "acquisition": [895, 995],
+        "disposition": [395, 495]
       },
       "MINI": {
         "acquisition": 925,
-        "disposition": [
-          350,
-          395
-        ]
+        "disposition": [350, 395]
       },
       "Porsche": {
         "acquisition": 1095,
-        "disposition": [
-          350,
-          495
-        ]
+        "disposition": [350, 495]
       },
       "Volkswagen": {
-        "acquisition": [
-          795,
-          895
-        ],
-        "disposition": [
-          395,
-          495
-        ]
+        "acquisition": [795, 895],
+        "disposition": [395, 495]
       },
       "Volvo": {
         "acquisition": 995,
@@ -219,10 +147,7 @@
       },
       "Polestar": {
         "acquisition": 995,
-        "disposition": [
-          395,
-          450
-        ]
+        "disposition": [395, 450]
       },
       "Rivian": {
         "acquisition": 895,

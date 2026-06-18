@@ -1,7 +1,452 @@
-{
-  "scenarios": [],
-  "metadata": {
-    "version": "1.0",
-    "description": "Lease and finance scenario library"
+[
+  {
+    "id": 1,
+    "title": "Extreme Climate Adaptation: Cold vs. Hot Weather Ownership",
+    "description": "Compare ownership costs and reliability across climates; focus on battery performance in extreme cold (EV/PHEV), coolant/oil requirements in heat, tire wear, and weather-specific maintenance.",
+    "arenas": ["ownership", "cost", "product", "energy"],
+    "tags": ["climate", "maintenance", "insurance", "energy"],
+    "category": "Geographic & Environmental",
+    "ai_handler": "analyzeClimateAdaptation"
+  },
+  {
+    "id": 2,
+    "title": "Ride-share Worker/Uptime/Deduction/Business Use",
+    "description": "Evaluate true gig worker cost: depreciation acceleration from high mileage, commercial insurance surcharges, and tax deduction strategy (actual expense vs. mileage). Compare lease vs. finance for business tax write-off.",
+    "arenas": ["deal", "cost", "ownership"],
+    "tags": ["🟠", "gig", "insurance", "deduction", "tax"],
+    "category": "Business & Work Use",
+    "ai_handler": "analyzeGigUsage"
+  },
+  {
+    "id": 3,
+    "title": "Subscription/Short-Term Rental vs. Lease/Finance",
+    "description": "Compare car subscription (fixed payment, all-in insurance/maintenance), long-term rental, and traditional lease/finance. Evaluate flexibility, contract breaks, and surprise costs.",
+    "arenas": ["deal", "product", "cost"],
+    "tags": ["🟠", "subscription", "contract"],
+    "category": "Deal Structures",
+    "ai_handler": "analyzeSubVsLease"
+  },
+  {
+    "id": 4,
+    "title": "Multi-state/Cross-Border Registration, Tax, and Compliance",
+    "description": "Analyze cost and legal complexity of registering/owning vehicles in multiple US states, Canadian provinces, or international locations. Includes titling, tax, insurance, and emission regulations.",
+    "arenas": ["ownership", "deal", "cost"],
+    "tags": ["crossborder", "taxes", "compliance"],
+    "category": "International & Multi-State",
+    "ai_handler": "analyzeMultistateCompliance"
+  },
+  {
+    "id": 5,
+    "title": "Business/Fleet Purchase, Tax Write-Offs, Accounting Scenario",
+    "description": "Find optimal structure for business vehicles: lease vs. buy; Section 179 depreciation vs. MACRS; mileage expensing vs. actual expense. Include fleet management and accounting implications.",
+    "arenas": ["deal", "cost", "ownership"],
+    "tags": ["business", "fleet", "tax", "accounting"],
+    "category": "Business & Work Use",
+    "ai_handler": "analyzeFleetTax"
+  },
+  {
+    "id": 6,
+    "title": "Public/Private Charging Logistics and Impact",
+    "description": "Assess real-world impact of home charging, public networks, or workplace infrastructure on EV/PHEV ownership cost, convenience, and uptime. Include charging time and access restrictions.",
+    "arenas": ["energy", "cost", "ownership"],
+    "tags": ["charging", "logistics", "ev"],
+    "category": "Electric Vehicle",
+    "ai_handler": "analyzeChargingLogistics"
+  },
+  {
+    "id": 7,
+    "title": "Joint/Parental/Split Ownership and Liability",
+    "description": "Evaluate legal and financial risks for shared, co-owned, or co-signed vehicles: maintenance responsibility, insurance liability, title/loan implications, and relationship breakdown scenarios.",
+    "arenas": ["ownership", "cost", "deal"],
+    "tags": ["🟠", "liability", "insurance", "legal"],
+    "category": "Family & Shared Use",
+    "ai_handler": "analyzeSharedLiability"
+  },
+  {
+    "id": 8,
+    "title": "Eco Impact Beyond Calculator: Emissions, Supply Chain, Grid Mix",
+    "description": "Assess true environmental cost including upstream manufacturing, supply chain footprint, and electricity grid source (fossil/renewable) for gas vs. hybrid vs. electric vehicles.",
+    "arenas": ["energy", "cost", "product"],
+    "tags": ["eco", "emissions", "lifecycle", "sustainability"],
+    "category": "Environmental",
+    "ai_handler": "analyzeEcoImpact"
+  },
+  {
+    "id": 9,
+    "title": "Donation, Charity, or Tax-Deduction Ownership Exit",
+    "description": "Compare net benefit of selling outright vs. trading vs. donating to charity. Factor in tax deduction value, appraisal costs, and remaining loan balance.",
+    "arenas": ["deal", "cost", "ownership"],
+    "tags": ["exit", "tax", "charity"],
+    "category": "End-of-Life Ownership",
+    "ai_handler": "analyzeCharityExit"
+  },
+  {
+    "id": 10,
+    "title": "Lease-end, Buyout, Extension, or New Lease Strategy",
+    "description": "At lease end, compare buyout cost vs. penalties for early termination, extension of current lease, rolling into a new lease, or switching to purchase. Evaluate wear/tear charges.",
+    "arenas": ["deal", "cost", "ownership"],
+    "tags": ["🟠", "buyout", "residual", "lease-end"],
+    "category": "Lease Management",
+    "ai_handler": "analyzeLeaseEnd"
+  },
+  {
+    "id": 11,
+    "title": "Extreme Repair/Risk—Insurance Total Loss and Buyback",
+    "description": "Post-accident: explore options for total loss buyback, salvage value, insurer payout, and cost of vehicle replacement. Evaluate whether repairing or replacing is economical.",
+    "arenas": ["cost", "ownership", "deal"],
+    "tags": ["insurance", "risk", "repair"],
+    "category": "Risk & Insurance",
+    "ai_handler": "analyzeTotalLoss"
+  },
+  {
+    "id": 12,
+    "title": "Charging Infrastructure Build-Out (HOA/Utility/Co-op)",
+    "description": "For multi-family, HOA, or business environments: analyze collective EV charging solutions—installation costs, shared financing, ongoing maintenance, and fairness models.",
+    "arenas": ["ownership", "energy", "cost"],
+    "tags": ["charging", "community", "infrastructure"],
+    "category": "Electric Vehicle",
+    "ai_handler": "analyzeChargingCoOp"
+  },
+  {
+    "id": 13,
+    "title": "Autonomous/Driver-Assist Tech Value Proposition",
+    "description": "Evaluate financial value and risk of advanced driver assistance: insurance discounts, reduced accident risk, productivity gains, and resale value premium. Include tech obsolescence.",
+    "arenas": ["product", "cost", "deal"],
+    "tags": ["technology", "insurance", "safety"],
+    "category": "Technology & Innovation",
+    "ai_handler": "analyzeAutoDriveTech"
+  },
+  {
+    "id": 14,
+    "title": "Data-Sharing/Subscription vs. Privacy and Resale",
+    "description": "Evaluate ownership and resale tradeoff for vehicles with required data sharing, in-vehicle subscriptions, or ad-supported features. Include privacy implications and feature depreciation.",
+    "arenas": ["product", "cost", "deal"],
+    "tags": ["technology", "privacy", "subscription"],
+    "category": "Technology & Innovation",
+    "ai_handler": "analyzeDataSharing"
+  },
+  {
+    "id": 15,
+    "title": "Out-of-Pocket Disaster/Unexpected Repair Risk",
+    "description": "Plan for sudden major repairs: analyze warranty coverage, extended warranty cost, self-insurance savings, and replacement threshold. Model worst-case scenarios.",
+    "arenas": ["cost", "ownership", "deal"],
+    "tags": ["warranty", "maintenance", "risk"],
+    "category": "Risk & Insurance",
+    "ai_handler": "analyzeRepairRisk"
+  },
+  {
+    "id": 16,
+    "title": "Seasonal Use: Parked Months vs. Full-Time Ownership",
+    "description": "For seasonal vehicles: compare year-round registration/insurance/maintenance vs. seasonal storage. Include deterioration risk, insurance gaps, and storage costs.",
+    "arenas": ["cost", "ownership"],
+    "tags": ["seasonal", "storage", "maintenance"],
+    "category": "Usage Patterns",
+    "ai_handler": "analyzeSeasonalUse"
+  },
+  {
+    "id": 17,
+    "title": "Insurance Coverage Splits: Liability/Full/Per-Mile/Specialty",
+    "description": "Compare comprehensive vs. liability-only vs. per-mile insurance for different use patterns. Include specialty policies for rideshare, classic cars, or high-value vehicles.",
+    "arenas": ["cost", "ownership"],
+    "tags": ["🟠", "insurance", "coverage"],
+    "category": "Risk & Insurance",
+    "ai_handler": "analyzeInsuranceTypes"
+  },
+  {
+    "id": 18,
+    "title": "Vehicle-as-a-Perk Business Structuring",
+    "description": "Tax and accounting impacts for employees receiving company car, allowance, or lease. Model personal use reporting, tax liability, and total compensation value.",
+    "arenas": ["deal", "cost", "ownership"],
+    "tags": ["business", "tax", "compensation"],
+    "category": "Business & Work Use",
+    "ai_handler": "analyzeVehiclePerk"
+  },
+  {
+    "id": 19,
+    "title": "Extended Use/Long-Hold (10+ Years), Residual & Maintenance",
+    "description": "Plan for long-term ownership: model cumulative maintenance costs, parts availability, obsolescence, insurance implications, and residual value for decade+ hold.",
+    "arenas": ["cost", "ownership", "product"],
+    "tags": ["maintenance", "longevity", "residual"],
+    "category": "Long-Term Ownership",
+    "ai_handler": "analyzeLongHold"
+  },
+  {
+    "id": 20,
+    "title": "Utility/Work Vehicle—Section 179, Lease, or Rent",
+    "description": "For specialized work/utility vehicles (trucks, vans, heavy equipment): compare outright purchase with Section 179 write-off, lease, or rental. Include financing and tax impacts.",
+    "arenas": ["deal", "cost", "product"],
+    "tags": ["business", "utility", "tax"],
+    "category": "Business & Work Use",
+    "ai_handler": "analyzeUtilityVehicle"
+  },
+  {
+    "id": 21,
+    "title": "Park-and-Ride/Transit Subsidies vs. Car-Only",
+    "description": "Compare cost and lifestyle for blending parking + transit (employer-subsidized or not) vs. driving alone every day. Include commute time and stress.",
+    "arenas": ["cost", "ownership"],
+    "tags": ["transit", "commute", "sustainability"],
+    "category": "Usage Patterns",
+    "ai_handler": "analyzeParkAndRide"
+  },
+  {
+    "id": 22,
+    "title": "Vehicle Buyback, Lemon Law, and Warranty Replacement",
+    "description": "Evaluate when to pursue buyback programs, lemon law protections, or force warranty replacement for persistent defects. Include timelines and documentation needs.",
+    "arenas": ["deal", "cost", "ownership"],
+    "tags": ["warranty", "lemon-law", "legal"],
+    "category": "Legal & Protections",
+    "ai_handler": "analyzeBuyback"
+  },
+  {
+    "id": 23,
+    "title": "Dealership/Aftermarket/Third-Party Warranties",
+    "description": "Assess true value, coverage gaps, and cost-benefit of in-house dealership vs. third-party extended warranties. Include administration and claim success rates.",
+    "arenas": ["cost", "ownership", "deal"],
+    "tags": ["warranty", "coverage", "maintenance"],
+    "category": "Risk & Insurance",
+    "ai_handler": "analyzeWarrantyTypes"
+  },
+  {
+    "id": 24,
+    "title": "Multi-Company Usage: Commercial, Rideshare, Mixed Fleet",
+    "description": "For vehicles used by multiple companies, drivers, or gig platforms: analyze insurance gaps, tax treatment, liability exposure, and fair cost allocation.",
+    "arenas": ["ownership", "cost", "deal"],
+    "tags": ["business", "multi-use", "insurance"],
+    "category": "Business & Work Use",
+    "ai_handler": "analyzeMultiCompanyUsage"
+  },
+  {
+    "id": 25,
+    "title": "Job Loss/Income Change Vehicle Planning",
+    "description": "When facing income loss, evaluate best vehicle strategy: keep and refinance, downgrade/trade, give up ownership, or go car-free. Model scenarios by severance/savings.",
+    "arenas": ["ownership", "cost", "deal"],
+    "tags": ["financial", "crisis", "downsize"],
+    "category": "Life Events",
+    "ai_handler": "analyzeJobLoss"
+  },
+  {
+    "id": 26,
+    "title": "Surprise Family Expansion: Upgrade, Trade, or Second Car",
+    "description": "After birth, adoption, or blended family: evaluate trading current vehicle for larger, adding a second vehicle, or using temporary rentals for large group trips.",
+    "arenas": ["ownership", "deal", "product"],
+    "tags": ["family", "lifecycle", "capacity"],
+    "category": "Life Events",
+    "ai_handler": "analyzeFamilyExpansion"
+  },
+  {
+    "id": 27,
+    "title": "Last Car Ever: Retirement, Age-in-Place, Long-Term Reliability",
+    "description": "Plan for a final, long-term purchase by retirees or aging drivers: prioritize reliability, accessibility, local dealer network, and comfort over performance.",
+    "arenas": ["ownership", "product", "cost"],
+    "tags": ["retirement", "longevity", "accessibility"],
+    "category": "Life Events",
+    "ai_handler": "analyzeRetirementCar"
+  },
+  {
+    "id": 28,
+    "title": "Flood/Weather Catastrophe Loss: Buy, Lease, or Wait",
+    "description": "Post-disaster: rapid assessment of whether to buy quick used replacement, enter new lease (often on waitlist), or delay ownership and rely on shared mobility.",
+    "arenas": ["deal", "cost", "ownership"],
+    "tags": ["disaster", "crisis", "emergency"],
+    "category": "Risk & Insurance",
+    "ai_handler": "analyzeDisasterRecovery"
+  },
+  {
+    "id": 29,
+    "title": "Resale Winner/Loser: Comparing Local Market Fluctuations",
+    "description": "Analyze which models/segments retain or lose value fastest in specific cities/regions. Account for local tax incentives, used car demand, and seasonal supply shifts.",
+    "arenas": ["cost", "product"],
+    "tags": ["market", "residual", "local"],
+    "category": "Market Analysis",
+    "ai_handler": "analyzeResaleValue"
+  },
+  {
+    "id": 30,
+    "title": "Competing EV/Hybrids: Rapid Technology Turnover Risk",
+    "description": "Decide whether to buy/lease the latest EV/PHEV in a hot segment; factor in rapid tech obsolescence, battery degradation, and depreciation from newer models.",
+    "arenas": ["energy", "product", "cost"],
+    "tags": ["technology", "depreciation", "ev"],
+    "category": "Electric Vehicle",
+    "ai_handler": "analyzeTechTurnover"
+  },
+  {
+    "id": 31,
+    "title": "Auction Purchase: Risk, Savings, and Logistics",
+    "description": "Compare dealer auction (Copart, IAA, ManheimAuctions) vs. retail/online purchases. Include inspection risk, unknown history, transport logistics, and warranty gaps.",
+    "arenas": ["deal", "cost"],
+    "tags": ["auction", "risk", "used"],
+    "category": "Purchase Channels",
+    "ai_handler": "analyzeAuctionPurchase"
+  },
+  {
+    "id": 32,
+    "title": "Credit Freeze/Security Hold: Lending/Leasing Obstacles",
+    "description": "For buyers with frozen credit (fraud alert), explore quick-move options: co-signer, alternative lenders, delayed purchase, or lease eligibility with proof of income.",
+    "arenas": ["deal", "cost"],
+    "tags": ["credit", "fraud", "lending"],
+    "category": "Financial Challenges",
+    "ai_handler": "analyzeCreditFreeze"
+  },
+  {
+    "id": 33,
+    "title": "Long-Distance Relocation: Ship, Drive, or Buy at Destination",
+    "description": "For major relocations, compare cost/stress of shipping current car, self-drive + potential repairs, vs. selling and buying/financing at new location.",
+    "arenas": ["cost", "ownership"],
+    "tags": ["relocation", "logistics", "moving"],
+    "category": "Geographic & Environmental",
+    "ai_handler": "analyzeRelocation"
+  },
+  {
+    "id": 34,
+    "title": "Mobility-as-a-Service Experiment: One-Year No Ownership",
+    "description": "Consciously opt out of ownership for a year: use car sharing, microtransit, ride-hail, rentals, and public transit exclusively. Compare cost and feasibility.",
+    "arenas": ["deal", "cost"],
+    "tags": ["sharing", "subscription", "experiment"],
+    "category": "Alternative Ownership",
+    "ai_handler": "analyzeMaaSExperiment"
+  },
+  {
+    "id": 35,
+    "title": "Digital/Remote Work Impact: Diminished Need for Daily Commuter",
+    "description": "After transitioning to remote/hybrid work, evaluate whether to downsize, shift to occasional-use car, rent as needed, or buy a 'fun' vehicle for weekends.",
+    "arenas": ["ownership", "deal", "product"],
+    "tags": ["lifestyle", "remote", "downsize"],
+    "category": "Usage Patterns",
+    "ai_handler": "analyzeRemoteWork"
+  },
+  {
+    "id": 36,
+    "title": "In-House Car Financing vs. Traditional Loan/Bank Lease",
+    "description": "Compare 'buy here pay here' dealer financing (higher rates, in-house risk) vs. traditional bank loan, credit union, or lease. Include predatory lending risks.",
+    "arenas": ["deal", "cost"],
+    "tags": ["financing", "risk", "lending"],
+    "category": "Financial Challenges",
+    "ai_handler": "analyzeInHouseFinance"
+  },
+  {
+    "id": 37,
+    "title": "Business Write-Off Analysis: Miles-Driven vs. Expenses-Claimed",
+    "description": "For self-employed/freelancers: compare deduction strategies—actual expense (maintenance, insurance, depreciation) vs. standard mileage rate. Model after-tax savings.",
+    "arenas": ["cost", "deal"],
+    "tags": ["business", "tax", "deduction"],
+    "category": "Business & Work Use",
+    "ai_handler": "analyzeBusinessDeduction"
+  },
+  {
+    "id": 38,
+    "title": "Insurance Lapse Consequence: Vehicle Replacement Impact",
+    "description": "After allowing insurance to lapse: explore cost and options for buying/leasing with a recent policy gap. Include surcharges and eligibility restrictions.",
+    "arenas": ["cost", "deal"],
+    "tags": ["insurance", "risk", "compliance"],
+    "category": "Risk & Insurance",
+    "ai_handler": "analyzeInsuranceLapse"
+  },
+  {
+    "id": 39,
+    "title": "Used Car Price Curve: Dealer vs. Private vs. Online",
+    "description": "Compare total cost (price + fees + risk) for used vehicles across dealer lots, private sales, and online superstores (Carvana, CARMAX, eBay). Include warranties and buyer protection.",
+    "arenas": ["deal", "cost"],
+    "tags": ["used", "channel", "pricing"],
+    "category": "Purchase Channels",
+    "ai_handler": "analyzeUsedPriceCurve"
+  },
+  {
+    "id": 40,
+    "title": "Cheaper Makes, Lower Quality?: Reliability/Resale Dilemma",
+    "description": "Compare ultra-low-cost entry vehicles (Hyundai, Kia, Nissan) against mainstream or luxury brands: model cumulative maintenance costs, reliability, and resale value.",
+    "arenas": ["product", "cost"],
+    "tags": ["value", "reliability", "brand"],
+    "category": "Market Analysis",
+    "ai_handler": "analyzeLowCostVehicles"
+  },
+  {
+    "id": 41,
+    "title": "Vehicle Wraps/Brand Advertising: Offset Ownership Cost",
+    "description": "Assess financial viability and reputational risks of accepting ad wraps/decals in exchange for lease/loan credits or monthly cash. Include removal and damage.",
+    "arenas": ["cost", "deal"],
+    "tags": ["alternative", "marketing", "income"],
+    "category": "Alternative Ownership",
+    "ai_handler": "analyzeVehicleWraps"
+  },
+  {
+    "id": 42,
+    "title": "Cross-Generational Purchase: Adult Buys Car for Parent",
+    "description": "When an adult child finances or gifts a vehicle to elderly parents: explore options (gift, co-own, finance, title placement). Include tax and liability implications.",
+    "arenas": ["ownership", "deal"],
+    "tags": ["family", "gift", "liability"],
+    "category": "Life Events",
+    "ai_handler": "analyzeParentPurchase"
+  },
+  {
+    "id": 43,
+    "title": "Factory Buyback Vehicles: Lemon Law Value Proposition",
+    "description": "Lemon law or warranty return cars sold as 'certified': analyze stigma, reliability, discount depth, resale impact, and warranty coverage vs. risk.",
+    "arenas": ["product", "cost", "deal"],
+    "tags": ["used", "lemon-law", "warranty"],
+    "category": "Legal & Protections",
+    "ai_handler": "analyzeLemonLawCars"
+  },
+  {
+    "id": 44,
+    "title": "Empty-Nester Downsizing: Family Car vs. Compact vs. None",
+    "description": "Parents with kids out of the house: compare keeping large family vehicle vs. downsizing to compact vs. going car-free/shared. Include storage and lifestyle.",
+    "arenas": ["ownership", "product", "cost"],
+    "tags": ["lifecycle", "downsize", "empty-nest"],
+    "category": "Life Events",
+    "ai_handler": "analyzeEmptyNest"
+  },
+  {
+    "id": 45,
+    "title": "Peer-to-Peer Vehicle Lending/Sharing",
+    "description": "Explore pros/cons of lending your vehicle to friends/neighbors via Turo or formal platforms: insurance coverage, wear & tear, liability, and income.",
+    "arenas": ["ownership", "cost"],
+    "tags": ["sharing", "income", "liability"],
+    "category": "Alternative Ownership",
+    "ai_handler": "analyzePeerSharing"
+  },
+  {
+    "id": 46,
+    "title": "Seasonal Garage Storage vs. Year-Round Use",
+    "description": "Compare cost/feasibility of keeping a car in paid storage over harsh seasons vs. year-round registration/insurance/maintenance. Include deterioration risk.",
+    "arenas": ["cost", "ownership"],
+    "tags": ["seasonal", "storage", "maintenance"],
+    "category": "Usage Patterns",
+    "ai_handler": "analyzeStorageVsUse"
+  },
+  {
+    "id": 47,
+    "title": "Sponsorship/Prize Vehicle Ownership: Tax & Cost Consequences",
+    "description": "Legal/tax/cost implications of winning or accepting a sponsored car: tax liability on prize, insurance setup, registration in your name, and actual ownership rights.",
+    "arenas": ["ownership", "cost"],
+    "tags": ["tax", "legal", "prize"],
+    "category": "Legal & Protections",
+    "ai_handler": "analyzePrizeVehicle"
+  },
+  {
+    "id": 48,
+    "title": "Lifestyle Upgrade: Buy for New Hobby/Sport",
+    "description": "Switching vehicle type to accommodate new hobby (kayaking, biking, off-roading): compare new vs. used, upfitting costs, insurance, and resale of current vehicle.",
+    "arenas": ["product", "cost", "ownership"],
+    "tags": ["lifestyle", "hobby", "specialty"],
+    "category": "Usage Patterns",
+    "ai_handler": "analyzeHobbyUpgrade"
+  },
+  {
+    "id": 49,
+    "title": "Car Subscription Swap Flex: Frequent Vehicle Changes",
+    "description": "Evaluate cost/value of subscription services allowing vehicle swaps every few months (SUV for ski season, sports coupe for summer) vs. single owned/leased model.",
+    "arenas": ["deal", "product", "cost"],
+    "tags": ["subscription", "flexibility", "seasonal"],
+    "category": "Alternative Ownership",
+    "ai_handler": "analyzeSubscriptionSwap"
+  },
+  {
+    "id": 50,
+    "title": "Energy Volatility Hedge: Gas vs. Electric Dual Ownership",
+    "description": "Owning one gas and one electric vehicle for flexibility: swap based on energy prices/fuel volatility, grid reliability, and real-world range needs.",
+    "arenas": ["energy", "cost", "ownership"],
+    "tags": ["hedge", "energy", "flexibility"],
+    "category": "Electric Vehicle",
+    "ai_handler": "analyzeEnergyHedge"
   }
-}
+]

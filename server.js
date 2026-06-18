@@ -1,253 +1,129 @@
-#!/usr/bin/env node
-/**
- * Daddy's Lease Hackulator — zero-dependency local dev server
- * ============================================================
- *
- * Drop-in replacement for `python3 -m http.server` when Python isn't
- * available (or busy on another port). Uses only built-in Node modules —
- * no `npm install` step required.
- *
- * USAGE:
- *   node server.js                # serves cwd on http://localhost:8000
- *   node server.js 8080           # custom port
- *   node server.js 8080 ../site   # custom port + custom root
- *   PORT=9000 node server.js      # via env var
- *   npm start                     # runs `node server.js` per package.json
- *
- * FEATURES:
- *   - Serves any static file from the chosen root directory
- *   - Auto-redirects `/` → `/daddy_hackulator_MASTER_v5.html` (so you can
- *     hit http://localhost:8000 directly without typing the full filename)
- *   - Open access (CORS *) for the calculator's outbound API calls
- *   - Disables caching so edits show up on refresh without hard-reload
- *   - Directory listing for any folder that has no index.html
- *   - Logs every request with status + timing
- */
+// =============================================================================
+// Proxy Server - daddy's Hackulator v3
+// =============================================================================
+// Serves static files and proxies external API calls to avoid CORS issues
+// and keep API keys server-side.
+//
+// Usage:
+//   node server.js                     → unified (index.html)
+//   node server.js --mode housing      → housing only (housing.html)
+//   node server.js --mode vehicle      → vehicle only (index.html, vehicle tab)
+//   node server.js --port 3000         → custom port
+// =============================================================================
 
-const http  = require('http');
-const fs    = require('fs');
-const path  = require('path');
-const url   = require('url');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
 
-// ────────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Config
-// ────────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
-const PORT = parseInt(process.argv[2] || process.env.PORT || '8000', 10);
-const ROOT = path.resolve(process.argv[3] || process.env.ROOT || process.cwd());
-const DEFAULT_FILE = 'daddy_hackulator_MASTER_v5.html';
-
-const MIME_TYPES = {
-  '.html': 'text/html; charset=utf-8',
-  '.htm':  'text/html; charset=utf-8',
-  '.js':   'application/javascript; charset=utf-8',
-  '.mjs':  'application/javascript; charset=utf-8',
-  '.css':  'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg':  'image/svg+xml',
-  '.png':  'image/png',
-  '.jpg':  'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif':  'image/gif',
-  '.webp': 'image/webp',
-  '.ico':  'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2':'font/woff2',
-  '.ttf':  'font/ttf',
-  '.otf':  'font/otf',
-  '.txt':  'text/plain; charset=utf-8',
-  '.md':   'text/markdown; charset=utf-8',
-  '.pdf':  'application/pdf',
-  '.map':  'application/json; charset=utf-8',
-};
-
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-// ────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ────────────────────────────────────────────────────────────────────────────
-
-function safeJoin(root, requestPath) {
-  // Decode + strip query/hash — those are handled by url.parse already
-  let decoded;
-  try { decoded = decodeURIComponent(requestPath); }
-  catch { return null; }
-  // Resolve and ensure the result is still inside root (block ../ traversal)
-  const resolved = path.resolve(root, '.' + decoded);
-  if (!resolved.startsWith(root)) return null;
-  return resolved;
+const args = process.argv.slice(2);
+function getArg(name, fallback) {
+  const idx = args.indexOf('--' + name);
+  return idx !== -1 && args[idx + 1] ? args[idx + 1] : fallback;
 }
 
-function fmtSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+const PORT = parseInt(getArg('port', '3000'), 10);
+const MODE = getArg('mode', 'unified'); // unified | housing | vehicle
+
+const MARKETCHECK_KEYS = [
+  'dH6w8gx3Z2e7PsC1ad11DZMABweOHvpZ',
+  'B9F2D6W9piaVFtHoIzk1cbktnC8e2E6I',
+  'zLllgtI0ZsHIC2sVCkFFFpDHVoZgGWUk',
+  'QpqWtCwCx5VQ4NmQMtaEHb1BWGpt4qda',
+  'OgQxtAQIyQXY0VXXgS1TEY7RDMDP2cZ1'
+];
+let currentKeyIndex = 0;
+
+function getNextKey() {
+  const key = MARKETCHECK_KEYS[currentKeyIndex];
+  currentKeyIndex = (currentKeyIndex + 1) % MARKETCHECK_KEYS.length;
+  return key;
 }
 
-function renderDirListing(dir, urlPath) {
-  let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
-  catch { return null; }
-  entries.sort((a, b) => {
-    if (a.isDirectory() && !b.isDirectory()) return -1;
-    if (!a.isDirectory() && b.isDirectory()) return 1;
-    return a.name.localeCompare(b.name);
-  });
-  const rows = entries.map(e => {
-    const name = e.isDirectory() ? e.name + '/' : e.name;
-    const href = path.posix.join(urlPath, e.name) + (e.isDirectory() ? '/' : '');
-    let info = '';
-    if (!e.isDirectory()) {
-      try { info = fmtSize(fs.statSync(path.join(dir, e.name)).size); }
-      catch { info = '?'; }
-    }
-    return `    <tr><td><a href="${href}">${name}</a></td><td style="text-align:right;color:#888;">${info}</td></tr>`;
-  });
-  const parent = urlPath !== '/' ? `    <tr><td colspan="2"><a href="../">../</a></td></tr>\n` : '';
-  return `<!doctype html>
-<html><head><meta charset="utf-8"><title>Index of ${urlPath}</title>
-<style>
-  body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:900px;margin:40px auto;padding:0 20px;}
-  h1{font-size:1.2rem;color:#111;border-bottom:1px solid #ddd;padding-bottom:8px;}
-  table{width:100%;border-collapse:collapse;}
-  td{padding:4px 8px;font-family:monospace;font-size:0.9rem;}
-  tr:hover{background:#f8fafc;}
-  a{color:#1d4ed8;text-decoration:none;}
-  a:hover{text-decoration:underline;}
-</style></head><body>
-<h1>Index of ${urlPath}</h1>
-<table>
-${parent}${rows.join('\n')}
-</table>
-</body></html>`;
+// ---------------------------------------------------------------------------
+// App
+// ---------------------------------------------------------------------------
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Serve static files from the directory where server.js lives
+const STATIC_ROOT = path.dirname(path.resolve(process.argv[1] || __filename));
+app.use(express.static(STATIC_ROOT));
+
+// ---------------------------------------------------------------------------
+// Landing page redirect based on mode
+// ---------------------------------------------------------------------------
+
+if (MODE === 'housing') {
+  app.get('/', (_req, res) => res.redirect('/housing.html'));
 }
+// unified and vehicle both use index.html (vehicle just starts on vehicle tab)
 
-function send(res, status, headers, body) {
-  res.writeHead(status, { ...CORS_HEADERS, 'Cache-Control': 'no-cache, no-store, must-revalidate', ...headers });
-  if (body !== null && body !== undefined) res.end(body);
-  else res.end();
-}
+// ---------------------------------------------------------------------------
+// API Proxy Routes
+// ---------------------------------------------------------------------------
 
-// ────────────────────────────────────────────────────────────────────────────
-// Server
-// ────────────────────────────────────────────────────────────────────────────
-
-const server = http.createServer((req, res) => {
-  const t0 = Date.now();
-  const parsed = url.parse(req.url);
-  let urlPath = parsed.pathname || '/';
-
-  // CORS preflight
-  if (req.method === 'OPTIONS') {
-    send(res, 204, {}, null);
-    log(req, 204, t0);
-    return;
-  }
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    send(res, 405, { 'Content-Type': 'text/plain' }, 'Method Not Allowed');
-    log(req, 405, t0);
-    return;
-  }
-
-  // Root → default HTML file
-  if (urlPath === '/' && fs.existsSync(path.join(ROOT, DEFAULT_FILE))) {
-    res.writeHead(302, { Location: '/' + DEFAULT_FILE, ...CORS_HEADERS });
-    res.end();
-    log(req, 302, t0, '→ /' + DEFAULT_FILE);
-    return;
-  }
-
-  const filePath = safeJoin(ROOT, urlPath);
-  if (!filePath) {
-    send(res, 400, { 'Content-Type': 'text/plain' }, 'Bad path');
-    log(req, 400, t0);
-    return;
-  }
-
-  fs.stat(filePath, (err, stat) => {
-    if (err) {
-      send(res, 404, { 'Content-Type': 'text/plain' }, 'Not Found: ' + urlPath);
-      log(req, 404, t0);
-      return;
-    }
-    if (stat.isDirectory()) {
-      // Try index.html first
-      const indexPath = path.join(filePath, 'index.html');
-      if (fs.existsSync(indexPath)) {
-        return serveFile(req, res, indexPath, t0);
-      }
-      // Otherwise render directory listing
-      const html = renderDirListing(filePath, urlPath.endsWith('/') ? urlPath : urlPath + '/');
-      send(res, 200, { 'Content-Type': 'text/html; charset=utf-8' }, html);
-      log(req, 200, t0, '(directory)');
-      return;
-    }
-    serveFile(req, res, filePath, t0);
-  });
-});
-
-function serveFile(req, res, filePath, t0) {
-  const ext = path.extname(filePath).toLowerCase();
-  const type = MIME_TYPES[ext] || 'application/octet-stream';
-  fs.stat(filePath, (err, stat) => {
-    if (err) {
-      send(res, 500, { 'Content-Type': 'text/plain' }, 'Stat error');
-      log(req, 500, t0);
-      return;
-    }
-    res.writeHead(200, {
-      'Content-Type': type,
-      'Content-Length': stat.size,
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      ...CORS_HEADERS,
+// Helper: proxy a GET request to an external URL
+async function proxyGet(externalUrl, res) {
+  try {
+    console.log(`[Proxy] → ${externalUrl}`);
+    const response = await fetch(externalUrl, {
+      headers: { 'Accept': 'application/json' }
     });
-    if (req.method === 'HEAD') { res.end(); log(req, 200, t0, fmtSize(stat.size) + ' (HEAD)'); return; }
-    fs.createReadStream(filePath)
-      .on('error', () => { try { res.end(); } catch{} })
-      .on('end', () => log(req, 200, t0, fmtSize(stat.size)))
-      .pipe(res);
-  });
-}
-
-function log(req, status, t0, extra) {
-  const ms = Date.now() - t0;
-  const code = status < 300 ? '\x1b[32m' : status < 400 ? '\x1b[36m' : status < 500 ? '\x1b[33m' : '\x1b[31m';
-  const reset = '\x1b[0m';
-  console.log(`${code}${status}${reset} ${req.method} ${req.url} — ${ms}ms${extra ? ' ' + extra : ''}`);
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Start
-// ────────────────────────────────────────────────────────────────────────────
-
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`\n⚠️  Port ${PORT} is already in use.`);
-    console.error(`   Try a different port:  node server.js ${PORT + 1}`);
-    console.error(`   Or kill the process holding it:  lsof -i :${PORT}\n`);
-  } else {
-    console.error('Server error:', err.message);
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    console.error(`[Proxy] Error: ${err.message}`);
+    res.status(502).json({ error: 'Proxy request failed', details: err.message });
   }
-  process.exit(1);
+}
+
+// --- MarketCheck: VIN Decode ---
+app.get('/api/marketcheck/decode/:vin', (req, res) => {
+  const key = getNextKey();
+  const url = `https://mc-api.marketcheck.com/v2/decode/car/vin/${encodeURIComponent(req.params.vin)}?api_key=${key}`;
+  proxyGet(url, res);
 });
 
-server.listen(PORT, () => {
-  console.log(`\n┌─────────────────────────────────────────────────────────────`);
-  console.log(`│  Daddy's Lease Hackulator — local dev server`);
-  console.log(`├─────────────────────────────────────────────────────────────`);
-  console.log(`│  Root:    ${ROOT}`);
-  console.log(`│  Default: ${DEFAULT_FILE}`);
-  console.log(`├─────────────────────────────────────────────────────────────`);
-  console.log(`│  Open:    \x1b[1;36mhttp://localhost:${PORT}/\x1b[0m`);
-  console.log(`│  Master:  http://localhost:${PORT}/daddy_hackulator_MASTER_v5.html`);
-  console.log(`│  Ult.:    http://localhost:${PORT}/daddy_hackulator_ULTIMATE_v5.html`);
-  console.log(`└─────────────────────────────────────────────────────────────\n`);
-  console.log(`Press Ctrl+C to stop.\n`);
+// --- MarketCheck: Listing Search ---
+app.get('/api/marketcheck/search', (req, res) => {
+  const key = getNextKey();
+  const params = new URLSearchParams(req.query);
+  params.set('api_key', key);
+  const url = `https://mc-api.marketcheck.com/v2/search/car/active?${params}`;
+  proxyGet(url, res);
 });
 
-process.on('SIGINT',  () => { console.log('\nShutting down…'); server.close(() => process.exit(0)); });
-process.on('SIGTERM', () => { server.close(() => process.exit(0)); });
+// --- NHTSA: VIN Decode ---
+app.get('/api/nhtsa/decode/:vin', (req, res) => {
+  const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVin/${encodeURIComponent(req.params.vin)}?format=json`;
+  proxyGet(url, res);
+});
+
+// --- Zippopotam: ZIP Lookup ---
+app.get('/api/zip/:zip', (req, res) => {
+  const url = `https://api.zippopotam.us/us/${encodeURIComponent(req.params.zip)}`;
+  proxyGet(url, res);
+});
+
+// ---------------------------------------------------------------------------
+// Start
+// ---------------------------------------------------------------------------
+
+app.listen(PORT, () => {
+  const modeLabel = {
+    unified: 'Unified (Vehicle + Housing)',
+    housing: 'Housing Only',
+    vehicle: 'Vehicle Only'
+  };
+  console.log(`\n  daddy's Hackulator Proxy Server`);
+  console.log(`  ────────────────────────────────`);
+  console.log(`  Mode:  ${modeLabel[MODE] || MODE}`);
+  console.log(`  URL:   http://localhost:${PORT}`);
+  console.log(`  Proxy: /api/marketcheck/* /api/nhtsa/* /api/zip/*\n`);
+});

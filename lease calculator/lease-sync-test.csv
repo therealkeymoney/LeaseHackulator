@@ -1,2 +1,0 @@
-VIN,MSRP,Cap Cost,Term,Residual %,MF,Lease Type,Fed EV Credit,Man Cash,Equity Amt,Equity Method,Tax %,Tax Method,Expected Monthly,Expected One-Pay,Expected Buyout
-TESTVIN001,45000,42000,36,58,0.00125,Standard,Upfront,0,0,Upfront,6.875,In-Payment,=(((Cap_Cost -(MSRP*(Residual_/100)))/Term)+((Cap_Cost + (MSRP*(Residual_/100)))*Adj_MF))*(1+(Tax_/100)),,=(MSRP*(Residual_/100))-EquityForBuyout

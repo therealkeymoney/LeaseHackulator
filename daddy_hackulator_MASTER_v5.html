@@ -17364,20 +17364,48 @@ body.dark-theme {
 
       function calculateBalloon(params = {}) {
         const leaseResult = calculateLease(params);
-        const balloonMonthDue = n(params.balloonMonthDue, 24);
+        const balloonTerm = n(params.balloonTerm, 60);
+        const balloonMonthDue = n(params.balloonMonthDue, Math.min(balloonTerm, 24));
         const balloonAddDown = n(params.balloonAddDown);
         const balloonNewTerm = n(params.balloonNewTerm, 36);
-        const initialPayment = leaseResult.totalMonthly;
-        const remainingAtBalloon =
-          leaseResult.adjCapCost - leaseResult.monthlyDep * balloonMonthDue;
-        const balloonAmount = Math.max(0, remainingAtBalloon);
+        const annualMiles = leaseResult.annualMiles || n(params.annualMiles, 12000);
+        const taxRate = leaseResult.taxRate || 0;
+        const taxDec = taxRate / 100;
 
-        // Residual Value at Balloon Due — the lessor's projected market value
-        // at the balloon month. Linear interpolation between MSRP (month 0)
-        // and the end-of-lease residual (month=term). Floored at the final
-        // residual so we never project below it. This is distinct from
-        // `remainingAtBalloon` (which is the lessee's remaining balance =
-        // what they'd owe to buy out at the balloon point).
+        const principal = leaseResult.adjCapCost;
+        const phase1Apr = leaseResult.effectiveMF * 2400;
+        const phase1Rate = phase1Apr / 100 / 12;
+
+        const userBalloon = n(params.balloonAmount);
+        let balloonAmount;
+        if (userBalloon > 0) {
+          balloonAmount = Math.min(userBalloon, principal);
+        } else if (balloonTerm > balloonMonthDue && balloonMonthDue > 0) {
+          const fullTermPmt = pmtCalc(principal, phase1Rate, balloonTerm);
+          if (phase1Rate > 0) {
+            const g = Math.pow(1 + phase1Rate, balloonMonthDue);
+            balloonAmount = Math.max(0, principal * g - fullTermPmt * (g - 1) / phase1Rate);
+          } else {
+            balloonAmount = Math.max(0, principal - fullTermPmt * balloonMonthDue);
+          }
+        } else {
+          balloonAmount = leaseResult.residualValue;
+        }
+
+        let phase1Base;
+        if (balloonMonthDue <= 0) {
+          phase1Base = 0;
+        } else if (phase1Rate > 0) {
+          const g = Math.pow(1 + phase1Rate, balloonMonthDue);
+          phase1Base = (principal * g - balloonAmount) * phase1Rate / (g - 1);
+        } else {
+          phase1Base = (principal - balloonAmount) / balloonMonthDue;
+        }
+        phase1Base = Math.max(0, phase1Base);
+
+        const phase1Tax = phase1Base * taxDec;
+        const initialPayment = phase1Base + phase1Tax;
+
         const _msrp = leaseResult.msrp || 0;
         const _finalRes = leaseResult.residualValue || 0;
         const _term = leaseResult.term || 1;
@@ -17386,26 +17414,33 @@ body.dark-theme {
           _finalRes,
           _msrp - (_msrp - _finalRes) * _frac
         );
-        const refinanceAmount = Math.max(0, balloonAmount - balloonAddDown);
-        const refinanceApr = n(params.balloonApr, leaseResult.aprEquivalent);
-        const refinanceMonthlyRate = refinanceApr / 100 / 12;
-        const newPayment = pmtCalc(
-          refinanceAmount,
-          refinanceMonthlyRate,
-          balloonNewTerm,
-        );
+
+        const driveOffFees = leaseResult.zeroDrive ? 0 : leaseResult.uncappedFees;
+        const msdDeposit = leaseResult.msdDeposit || 0;
+        const totalDueAtSigning = initialPayment + driveOffFees + msdDeposit;
+
         const initialPhaseTotal = initialPayment * balloonMonthDue;
+
+        const refinanceApr = n(params.balloonApr) || leaseResult.aprEquivalent;
+        const refinanceAmount = Math.max(0, balloonAmount - balloonAddDown);
+        const refinanceRate = refinanceApr / 100 / 12;
+        const phase2Base = pmtCalc(refinanceAmount, refinanceRate, balloonNewTerm);
+        const phase2Tax = phase2Base * taxDec;
+        const newPayment = phase2Base + phase2Tax;
         const refinancePhaseTotal = newPayment * balloonNewTerm;
+
+        const phase1Interest = Math.max(0, (initialPayment * balloonMonthDue) - (principal - balloonAmount));
+        const phase2Interest = Math.max(0, (newPayment * balloonNewTerm) - refinanceAmount);
+
+        const totalTerm = balloonMonthDue + balloonNewTerm;
         const totalCost =
-          leaseResult.totalDueAtSigning +
+          totalDueAtSigning +
           initialPhaseTotal +
           balloonAddDown +
           refinancePhaseTotal;
-        const totalTerm = balloonMonthDue + balloonNewTerm;
-        const totalMiles = leaseResult.annualMiles * (totalTerm / 12);
+        const totalMiles = annualMiles * (totalTerm / 12);
         const costPerMile = totalMiles > 0 ? totalCost / totalMiles : 0;
 
-        // Savings vs standard lease
         const standardLeaseTotal =
           leaseResult.totalDueAtSigning + leaseResult.totalPayments;
         const savings = standardLeaseTotal - totalCost;
@@ -17413,28 +17448,44 @@ body.dark-theme {
         return {
           type: "balloon",
           label: "Balloon",
+          msrp: _msrp,
+          sellingPrice: leaseResult.sellingPrice,
+          adjCapCost: principal,
+          residualValue: leaseResult.residualValue,
+          term: totalTerm,
+          phase1Apr,
+          phase1Base,
+          phase1Tax,
           initialPayment,
+          balloonTerm,
           balloonMonthDue,
           initialPhaseTotal,
           balloonAmount,
           balloonAddDown,
-          remainingAtBalloon,
           residualAtBalloon,
           refinanceAmount,
           refinanceApr,
           balloonNewTerm,
           newPayment,
+          newBasePayment: phase2Base,
+          phase2Tax,
           refinancePhaseTotal,
+          phase1Interest,
+          phase2Interest,
           totalCost,
           totalTerm,
           totalMiles,
           costPerMile,
-          totalDueAtSigning: leaseResult.totalDueAtSigning,
+          totalDueAtSigning,
           savings,
           leaseResult,
           totalMonthly: initialPayment,
+          totalPayments: initialPhaseTotal + refinancePhaseTotal,
+          effectiveBuyoutCost: 0,
+          fuel: leaseResult.fuel,
+          annualMiles,
           signingPlusPayments:
-            leaseResult.totalDueAtSigning +
+            totalDueAtSigning +
             initialPhaseTotal +
             refinancePhaseTotal,
         };
@@ -17804,10 +17855,11 @@ body.dark-theme {
       <div class="form-row"><div class="form-group"><label>Disp Fee</label><input type="number" class="dispFee" value="395" readonly/></div><div class="form-group"><label>Capped</label><input type="text" class="totalFeesCapped" value="$0" readonly/></div><div class="form-group"><label>At Signing</label><input type="text" class="totalFeesAtSigning" value="$0" readonly/></div></div>
     </div>
     <div class="form-section balloon-fields hidden"><h3 class="section-title">🎈 Balloon Structure 🎈</h3>
-      <div class="form-row"><div class="form-group"><label>Balloon Term (months)</label><input type="number" class="balloonTerm" value="60"/></div><div class="form-group"><label>Balloon Due at Month</label><input type="number" class="balloonMonthDue" value="36"/></div></div>
-      <div class="form-row"><div class="form-group"><label>Additional Down at Balloon</label><input type="number" class="balloonAddDown" value="0"/></div><div class="form-group"><label>New Term After Balloon</label><input type="number" class="balloonNewTerm" value="24"/></div></div>
-      <div class="form-row"><div class="form-group"><label>Balloon APR %</label><input type="number" class="balloonApr" value="0" step="0.01"/></div><div class="form-group"><label>Remaining Cap at Balloon</label><input type="number" class="balloonRemCap" readonly style="background:#f8fafc;"/></div><div class="form-group"><label>New Payment After Balloon</label><input type="number" class="balloonNewPay" readonly style="background:#f8fafc;"/></div></div>
-      <div class="form-row"><div class="form-group"><label>Residual Value at Balloon Due</label><input type="number" class="residualAtBalloon" readonly style="background:#f8fafc;" title="Lessor's projected market value at the balloon month (linear interpolation between MSRP and end-of-lease residual)."/></div></div>
+      <p style="font-size:0.7rem;color:var(--text-muted,#6b7280);margin:0 0 8px 0;">Amortization term sets the payment schedule — payments stop at the balloon due month, leaving a balloon balance. Override the balloon amount to set a specific deferred value.</p>
+      <div class="form-row"><div class="form-group"><label>Amortization Term (months)</label><input type="number" class="balloonTerm" value="60" title="Total amortization period. Payments are calculated as if paying over this full term, but you only pay until Balloon Due month."/></div><div class="form-group"><label>Balloon Due at Month</label><input type="number" class="balloonMonthDue" value="36" title="Month when the balloon payment is due. Remaining balance at this point becomes the balloon amount."/></div></div>
+      <div class="form-row"><div class="form-group"><label>Balloon Amount Override</label><input type="number" class="balloonAmount" value="0" title="Leave at 0 to auto-derive from amortization schedule. Set a value to specify the exact balloon amount."/></div><div class="form-group"><label>Balloon APR %</label><input type="number" class="balloonApr" value="0" step="0.01" title="Rate for refinancing the balloon. If 0, uses the lease MF-equivalent APR."/></div></div>
+      <div class="form-row"><div class="form-group"><label>Additional Down at Balloon</label><input type="number" class="balloonAddDown" value="0" title="Extra cash applied when refinancing the balloon, reducing the refinanced amount."/></div><div class="form-group"><label>New Term After Balloon</label><input type="number" class="balloonNewTerm" value="24" title="Finance term for refinancing the balloon amount."/></div></div>
+      <div class="form-row"><div class="form-group"><label>Balloon Amount (calculated)</label><input type="number" class="balloonRemCap" readonly style="background:#f8fafc;" title="Remaining balance at balloon due month — this is the balloon payment."/></div><div class="form-group"><label>New Payment After Balloon</label><input type="number" class="balloonNewPay" readonly style="background:#f8fafc;"/></div><div class="form-group"><label>Residual Value at Balloon</label><input type="number" class="residualAtBalloon" readonly style="background:#f8fafc;" title="Projected market value at balloon month (interpolated between MSRP and end-of-lease residual)."/></div></div>
     </div>
     <div class="form-section"><h3 class="section-title">🏢 Dealer</h3>
       <div class="form-row"><div class="form-group grow"><label>Name</label><input type="text" class="dealerName" placeholder="Auto-filled"/></div><div class="form-group"><label>Phone</label><input type="text" class="dealerPhone"/></div></div>
@@ -20653,6 +20705,12 @@ body.dark-theme {
                 ? card.querySelector(".fuelTankSize").value
                 : 14,
             ) || 14,
+          balloonTerm:
+            parseInt(
+              card.querySelector(".balloonTerm")
+                ? card.querySelector(".balloonTerm").value
+                : 60,
+            ) || 60,
           balloonMonthDue:
             parseInt(
               card.querySelector(".balloonMonthDue")
@@ -20676,6 +20734,11 @@ body.dark-theme {
                 ? card.querySelector(".balloonApr").value
                 : 0,
             ) || 0,
+          balloonAmount: getNum(
+            card.querySelector(".balloonAmount")
+              ? card.querySelector(".balloonAmount").value
+              : 0,
+          ),
         };
       }
 

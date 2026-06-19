@@ -16968,20 +16968,48 @@ body.dark-theme {
 
       function calculateBalloon(params = {}) {
         const leaseResult = calculateLease(params);
-        const balloonMonthDue = n(params.balloonMonthDue, 24);
+        const balloonTerm = n(params.balloonTerm, 60);
+        const balloonMonthDue = n(params.balloonMonthDue, Math.min(balloonTerm, 24));
         const balloonAddDown = n(params.balloonAddDown);
         const balloonNewTerm = n(params.balloonNewTerm, 36);
-        const initialPayment = leaseResult.totalMonthly;
-        const remainingAtBalloon =
-          leaseResult.adjCapCost - leaseResult.monthlyDep * balloonMonthDue;
-        const balloonAmount = Math.max(0, remainingAtBalloon);
+        const annualMiles = leaseResult.annualMiles || n(params.annualMiles, 12000);
+        const taxRate = leaseResult.taxRate || 0;
+        const taxDec = taxRate / 100;
 
-        // Residual Value at Balloon Due — the lessor's projected market value
-        // at the balloon month. Linear interpolation between MSRP (month 0)
-        // and the end-of-lease residual (month=term). Floored at the final
-        // residual so we never project below it. This is distinct from
-        // `remainingAtBalloon` (which is the lessee's remaining balance =
-        // what they'd owe to buy out at the balloon point).
+        const principal = leaseResult.adjCapCost;
+        const phase1Apr = leaseResult.effectiveMF * 2400;
+        const phase1Rate = phase1Apr / 100 / 12;
+
+        const userBalloon = n(params.balloonAmount);
+        let balloonAmount;
+        if (userBalloon > 0) {
+          balloonAmount = Math.min(userBalloon, principal);
+        } else if (balloonTerm > balloonMonthDue && balloonMonthDue > 0) {
+          const fullTermPmt = pmtCalc(principal, phase1Rate, balloonTerm);
+          if (phase1Rate > 0) {
+            const g = Math.pow(1 + phase1Rate, balloonMonthDue);
+            balloonAmount = Math.max(0, principal * g - fullTermPmt * (g - 1) / phase1Rate);
+          } else {
+            balloonAmount = Math.max(0, principal - fullTermPmt * balloonMonthDue);
+          }
+        } else {
+          balloonAmount = leaseResult.residualValue;
+        }
+
+        let phase1Base;
+        if (balloonMonthDue <= 0) {
+          phase1Base = 0;
+        } else if (phase1Rate > 0) {
+          const g = Math.pow(1 + phase1Rate, balloonMonthDue);
+          phase1Base = (principal * g - balloonAmount) * phase1Rate / (g - 1);
+        } else {
+          phase1Base = (principal - balloonAmount) / balloonMonthDue;
+        }
+        phase1Base = Math.max(0, phase1Base);
+
+        const phase1Tax = phase1Base * taxDec;
+        const initialPayment = phase1Base + phase1Tax;
+
         const _msrp = leaseResult.msrp || 0;
         const _finalRes = leaseResult.residualValue || 0;
         const _term = leaseResult.term || 1;
@@ -16990,26 +17018,33 @@ body.dark-theme {
           _finalRes,
           _msrp - (_msrp - _finalRes) * _frac
         );
-        const refinanceAmount = Math.max(0, balloonAmount - balloonAddDown);
-        const refinanceApr = n(params.balloonApr, leaseResult.aprEquivalent);
-        const refinanceMonthlyRate = refinanceApr / 100 / 12;
-        const newPayment = pmtCalc(
-          refinanceAmount,
-          refinanceMonthlyRate,
-          balloonNewTerm,
-        );
+
+        const driveOffFees = leaseResult.zeroDrive ? 0 : leaseResult.uncappedFees;
+        const msdDeposit = leaseResult.msdDeposit || 0;
+        const totalDueAtSigning = initialPayment + driveOffFees + msdDeposit;
+
         const initialPhaseTotal = initialPayment * balloonMonthDue;
+
+        const refinanceApr = n(params.balloonApr) || leaseResult.aprEquivalent;
+        const refinanceAmount = Math.max(0, balloonAmount - balloonAddDown);
+        const refinanceRate = refinanceApr / 100 / 12;
+        const phase2Base = pmtCalc(refinanceAmount, refinanceRate, balloonNewTerm);
+        const phase2Tax = phase2Base * taxDec;
+        const newPayment = phase2Base + phase2Tax;
         const refinancePhaseTotal = newPayment * balloonNewTerm;
+
+        const phase1Interest = Math.max(0, (initialPayment * balloonMonthDue) - (principal - balloonAmount));
+        const phase2Interest = Math.max(0, (newPayment * balloonNewTerm) - refinanceAmount);
+
+        const totalTerm = balloonMonthDue + balloonNewTerm;
         const totalCost =
-          leaseResult.totalDueAtSigning +
+          totalDueAtSigning +
           initialPhaseTotal +
           balloonAddDown +
           refinancePhaseTotal;
-        const totalTerm = balloonMonthDue + balloonNewTerm;
-        const totalMiles = leaseResult.annualMiles * (totalTerm / 12);
+        const totalMiles = annualMiles * (totalTerm / 12);
         const costPerMile = totalMiles > 0 ? totalCost / totalMiles : 0;
 
-        // Savings vs standard lease
         const standardLeaseTotal =
           leaseResult.totalDueAtSigning + leaseResult.totalPayments;
         const savings = standardLeaseTotal - totalCost;
@@ -17017,28 +17052,44 @@ body.dark-theme {
         return {
           type: "balloon",
           label: "Balloon",
+          msrp: _msrp,
+          sellingPrice: leaseResult.sellingPrice,
+          adjCapCost: principal,
+          residualValue: leaseResult.residualValue,
+          term: totalTerm,
+          phase1Apr,
+          phase1Base,
+          phase1Tax,
           initialPayment,
+          balloonTerm,
           balloonMonthDue,
           initialPhaseTotal,
           balloonAmount,
           balloonAddDown,
-          remainingAtBalloon,
           residualAtBalloon,
           refinanceAmount,
           refinanceApr,
           balloonNewTerm,
           newPayment,
+          newBasePayment: phase2Base,
+          phase2Tax,
           refinancePhaseTotal,
+          phase1Interest,
+          phase2Interest,
           totalCost,
           totalTerm,
           totalMiles,
           costPerMile,
-          totalDueAtSigning: leaseResult.totalDueAtSigning,
+          totalDueAtSigning,
           savings,
           leaseResult,
           totalMonthly: initialPayment,
+          totalPayments: initialPhaseTotal + refinancePhaseTotal,
+          effectiveBuyoutCost: 0,
+          fuel: leaseResult.fuel,
+          annualMiles,
           signingPlusPayments:
-            leaseResult.totalDueAtSigning +
+            totalDueAtSigning +
             initialPhaseTotal +
             refinancePhaseTotal,
         };
@@ -17313,7 +17364,6 @@ body.dark-theme {
     <button class="vehicle-tab-btn active" data-tab="input">🔢 Input</button>
     <button class="vehicle-tab-btn" data-tab="results">✅ Results</button>
     <button class="vehicle-tab-btn" data-tab="deals">📋 Deals</button>
-    <button class="vehicle-tab-btn" data-tab="scenarios">🎯 Scenarios</button>
   </div>
   <div class="vehicle-tab-content active" data-tab="input">
     <div class="form-section"><h3 class="section-title">🚗 Vehicle Information</h3>
@@ -17403,10 +17453,11 @@ body.dark-theme {
       <div class="form-row"><div class="form-group"><label>Disp Fee</label><input type="number" class="dispFee" value="395" readonly/></div><div class="form-group"><label>Capped</label><input type="text" class="totalFeesCapped" value="$0" readonly/></div><div class="form-group"><label>At Signing</label><input type="text" class="totalFeesAtSigning" value="$0" readonly/></div></div>
     </div>
     <div class="form-section balloon-fields hidden"><h3 class="section-title">🎈 Balloon Structure 🎈</h3>
-      <div class="form-row"><div class="form-group"><label>Balloon Term (months)</label><input type="number" class="balloonTerm" value="60"/></div><div class="form-group"><label>Balloon Due at Month</label><input type="number" class="balloonMonthDue" value="36"/></div></div>
-      <div class="form-row"><div class="form-group"><label>Additional Down at Balloon</label><input type="number" class="balloonAddDown" value="0"/></div><div class="form-group"><label>New Term After Balloon</label><input type="number" class="balloonNewTerm" value="24"/></div></div>
-      <div class="form-row"><div class="form-group"><label>Balloon APR %</label><input type="number" class="balloonApr" value="0" step="0.01"/></div><div class="form-group"><label>Remaining Cap at Balloon</label><input type="number" class="balloonRemCap" readonly style="background:#f8fafc;"/></div><div class="form-group"><label>New Payment After Balloon</label><input type="number" class="balloonNewPay" readonly style="background:#f8fafc;"/></div></div>
-      <div class="form-row"><div class="form-group"><label>Residual Value at Balloon Due</label><input type="number" class="residualAtBalloon" readonly style="background:#f8fafc;" title="Lessor's projected market value at the balloon month (linear interpolation between MSRP and end-of-lease residual)."/></div></div>
+      <p style="font-size:0.7rem;color:var(--text-muted,#6b7280);margin:0 0 8px 0;">Amortization term sets the payment schedule — payments stop at the balloon due month, leaving a balloon balance. Override the balloon amount to set a specific deferred value.</p>
+      <div class="form-row"><div class="form-group"><label>Amortization Term (months)</label><input type="number" class="balloonTerm" value="60" title="Total amortization period. Payments are calculated as if paying over this full term, but you only pay until Balloon Due month."/></div><div class="form-group"><label>Balloon Due at Month</label><input type="number" class="balloonMonthDue" value="36" title="Month when the balloon payment is due. Remaining balance at this point becomes the balloon amount."/></div></div>
+      <div class="form-row"><div class="form-group"><label>Balloon Amount Override</label><input type="number" class="balloonAmount" value="0" title="Leave at 0 to auto-derive from amortization schedule. Set a value to specify the exact balloon amount."/></div><div class="form-group"><label>Balloon APR %</label><input type="number" class="balloonApr" value="0" step="0.01" title="Rate for refinancing the balloon. If 0, uses the lease MF-equivalent APR."/></div></div>
+      <div class="form-row"><div class="form-group"><label>Additional Down at Balloon</label><input type="number" class="balloonAddDown" value="0" title="Extra cash applied when refinancing the balloon, reducing the refinanced amount."/></div><div class="form-group"><label>New Term After Balloon</label><input type="number" class="balloonNewTerm" value="24" title="Finance term for refinancing the balloon amount."/></div></div>
+      <div class="form-row"><div class="form-group"><label>Balloon Amount (calculated)</label><input type="number" class="balloonRemCap" readonly style="background:#f8fafc;" title="Remaining balance at balloon due month — this is the balloon payment."/></div><div class="form-group"><label>New Payment After Balloon</label><input type="number" class="balloonNewPay" readonly style="background:#f8fafc;"/></div><div class="form-group"><label>Residual Value at Balloon</label><input type="number" class="residualAtBalloon" readonly style="background:#f8fafc;" title="Projected market value at balloon month (interpolated between MSRP and end-of-lease residual)."/></div></div>
     </div>
     <div class="form-section"><h3 class="section-title">🏢 Dealer</h3>
       <div class="form-row"><div class="form-group grow"><label>Name</label><input type="text" class="dealerName" placeholder="Auto-filled"/></div><div class="form-group"><label>Phone</label><input type="text" class="dealerPhone"/></div></div>
@@ -17564,8 +17615,12 @@ body.dark-theme {
               <th style="padding:6px 8px;text-align:left;">Down</th>
               <th style="padding:6px 8px;text-align:left;">Trade</th>
               <th style="padding:6px 8px;text-align:center;">0-Drive</th>
+              <th style="padding:6px 8px;text-align:right;">Adj. Cap Cost</th>
               <th style="padding:6px 8px;text-align:right;">Monthly</th>
               <th style="padding:6px 8px;text-align:right;">Due at Signing</th>
+              <th style="padding:6px 8px;text-align:right;">Total Payments</th>
+              <th style="padding:6px 8px;text-align:right;">Buyout</th>
+              <th style="padding:6px 8px;text-align:right;">Check-Back</th>
               <th style="padding:6px 8px;text-align:right;">Total Cost</th>
               <th style="padding:6px 8px;text-align:right;">Cost / Mi</th>
               <th style="padding:6px 8px;text-align:right;">Δ vs Baseline</th>
@@ -17591,22 +17646,32 @@ body.dark-theme {
     <div style="padding:12px 16px;"><button class="btn" data-action="download-report" style="width:100%;">📥 Download Report</button></div>
   </div>
   <div class="vehicle-tab-content" data-tab="deals">
-    <div style="padding:12px 16px;"><h4 style="font-size:0.85rem;color:var(--primary);margin-bottom:8px;">Deal Structures</h4><p style="font-size:0.7rem;color:var(--muted);margin-bottom:10px;">Click any deal to calculate with your current inputs.</p><div class="deal-structure-grid"></div><div class="deal-detail-output" style="margin-top:12px;font-size:0.8rem;"></div></div>
-  </div>
-  <div class="vehicle-tab-content" data-tab="scenarios">
     <div style="padding:12px 16px;">
-      <h4 style="font-size:0.85rem;color:var(--primary);margin-bottom:8px;">Scenario Analysis</h4>
-      <p style="font-size:0.7rem;color:var(--text-muted);margin-bottom:10px;">Select a scenario to explore ownership strategies.</p>
-      <div class="form-group" style="margin-bottom:12px;">
-        <label>Select Scenario</label>
-        <select class="scenarioSelector" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.8rem;">
-          <option value="">-- Choose a Scenario --</option>
-        </select>
+      <h4 style="font-size:0.9rem;color:var(--primary);margin-bottom:4px;">Deal Structure Comparison</h4>
+      <p style="font-size:0.72rem;color:var(--text-muted,#6b7280);margin-bottom:10px;">All deal types calculated with your current inputs. Highlighted row is lowest Total Cost.</p>
+      <div class="deal-compare-wrap" style="overflow-x:auto;font-size:0.76rem;">
+        <table class="deal-compare-table" style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:var(--primary);color:white;font-size:0.72rem;">
+              <th style="padding:6px 8px;text-align:left;">Deal Type</th>
+              <th style="padding:6px 8px;text-align:left;">Description</th>
+              <th style="padding:6px 8px;text-align:right;">Monthly</th>
+              <th style="padding:6px 8px;text-align:right;">Due at Signing</th>
+              <th style="padding:6px 8px;text-align:right;">Total Payments</th>
+              <th style="padding:6px 8px;text-align:right;">Buyout / Equity</th>
+              <th style="padding:6px 8px;text-align:right;">Total Cost</th>
+              <th style="padding:6px 8px;text-align:right;">Cost / Mi</th>
+              <th style="padding:6px 8px;text-align:right;">Δ vs Current</th>
+            </tr>
+          </thead>
+          <tbody class="deal-compare-tbody"></tbody>
+        </table>
       </div>
-      <div class="scenario-details hidden">
-        <div class="scenario-info"></div>
+      <div class="deal-compare-note" style="margin-top:8px;font-size:0.72rem;color:#64748b;font-style:italic;">
+        Same vehicle, same price — only the deal structure changes. Your currently selected deal type is the baseline (blue). Lowest Total Cost is highlighted (green).
       </div>
-      <div class="scenario-analysis" style="margin-top:12px;"></div>
+      <div class="deal-structure-grid" style="display:none;"></div>
+      <div class="deal-detail-output" style="display:none;"></div>
     </div>
   </div>
 </div>`;
@@ -18921,6 +18986,125 @@ body.dark-theme {
         });
       }
 
+      function populateDealComparison(card) {
+        var tbody = card.querySelector('.deal-compare-tbody');
+        if (!tbody) return;
+        var params = gatherParams(card);
+        var dealTypeEl = card.querySelector('.dealType');
+        var currentDealType = dealTypeEl ? dealTypeEl.value : 'lease';
+
+        var structures = [
+          { id: 'lease', name: 'Closed End Lease', desc: 'Standard monthly lease — you return the car at term end' },
+          { id: 'finance', name: 'Finance (Purchase)', desc: 'Traditional auto loan — you own the car outright' },
+          { id: 'balloon_lease', name: 'Balloon Lease', desc: 'Lease with deferred balloon due at end' },
+          { id: 'balloon_finance', name: 'Balloon Finance', desc: 'Loan with balloon payment at end' },
+          { id: 'single_pay', name: 'Single-Pay Lease', desc: 'All lease payments upfront — big DAS, $0/mo' },
+          { id: 'subvented', name: 'Subvented Lease', desc: 'OEM-subsidized rate (10% MF discount modeled)' },
+          { id: 'subvented_buy', name: 'Subvented + Buyout', desc: 'Subvented lease then purchase at residual' },
+          { id: 'subvented_single', name: 'Subvented Single-Pay', desc: 'Subvented rate with single upfront payment' },
+          { id: 'buy', name: 'Cash Purchase', desc: 'Pay full price — no monthly, no interest' },
+          { id: 'finance_short', name: 'Finance Short (36mo)', desc: 'Aggressive 36-month payoff, higher monthly' },
+          { id: 'extended_lease', name: 'Extended Lease (48mo)', desc: 'Longer term for lower monthly, more depreciation' },
+          { id: 'lease_buy', name: 'Lease + Buyout', desc: 'Lease then finance residual at end' }
+        ];
+
+        var currentDealMap = {
+          'lease': 'lease', 'closedend': 'lease',
+          'finance': 'finance',
+          'balloon': 'balloon_lease', 'balloonfinance': 'balloon_finance',
+          'singlepay': 'single_pay',
+          'subvented': 'subvented'
+        };
+        var baselineId = currentDealMap[currentDealType] || 'lease';
+
+        var rows = structures.map(function(s) {
+          var r = null;
+          try { r = runDealStructure(s.id, params); } catch(e) { r = null; }
+          var monthly = 0, das = 0, totalPay = 0, buyout = 0, total = 0, cpm = 0;
+          if (r) {
+            monthly = parseFloat(r.totalMonthly || r.monthlyPayment || r.initialPayment || 0) || 0;
+            das = parseFloat(r.totalDueAtSigning || r.totalSinglePay || 0) || 0;
+            totalPay = parseFloat(r.totalPayments) || (monthly * (parseFloat(r.term) || 0));
+            buyout = parseFloat(r.effectiveBuyoutCost || r.residualValue || r.buyoutCost || 0) || 0;
+            total = parseFloat(r.totalCostToOwn || r.totalCost || r.totalWithBuyout || r.signingPlusPayments || 0) || 0;
+            if (total <= 0) total = das + totalPay + buyout;
+            cpm = parseFloat(r.costPerMile) || 0;
+            if (cpm <= 0 && total > 0) {
+              var miles = (parseFloat(params.annualMiles) || 12000) * ((parseFloat(params.term) || 36) / 12);
+              cpm = miles > 0 ? total / miles : 0;
+            }
+          }
+          return {
+            id: s.id, name: s.name, desc: s.desc,
+            isBaseline: s.id === baselineId,
+            failed: !r,
+            monthly: monthly, das: das, totalPay: totalPay,
+            buyout: buyout, total: total, cpm: cpm,
+            isSinglePay: !!(r && r.type === 'singlepay'),
+            isCash: !!(r && r.type === 'cash')
+          };
+        });
+
+        var baseline = rows.filter(function(r) { return r.isBaseline; })[0];
+        var baseCost = baseline ? baseline.total : 0;
+        var validRows = rows.filter(function(r) { return !r.failed && r.total > 0; });
+        var winner = null;
+        if (validRows.length > 0) {
+          winner = validRows.reduce(function(best, cur) {
+            return (cur.total < best.total) ? cur : best;
+          }, validRows[0]);
+        }
+
+        tbody.innerHTML = rows.map(function(r) {
+          var isWinner = (winner && r === winner);
+          var isBase = r.isBaseline;
+          var delta = r.total - baseCost;
+          var deltaTxt, deltaColor;
+          if (r.failed || r.total <= 0) {
+            deltaTxt = 'n/a'; deltaColor = '#94a3b8';
+          } else if (isBase) {
+            deltaTxt = '—'; deltaColor = '#64748b';
+          } else if (Math.abs(delta) < 0.5) {
+            deltaTxt = '$0'; deltaColor = '#64748b';
+          } else if (delta < 0) {
+            deltaTxt = '−' + fmt(Math.abs(delta)); deltaColor = '#16a34a';
+          } else {
+            deltaTxt = '+' + fmt(delta); deltaColor = '#dc2626';
+          }
+
+          var rowBg = '';
+          if (isBase && isWinner)      rowBg = 'background:linear-gradient(90deg,#dbeafe 0%,#dcfce7 100%);';
+          else if (isWinner)           rowBg = 'background:#dcfce7;';
+          else if (isBase)             rowBg = 'background:#dbeafe;';
+          else if (r.failed)           rowBg = 'background:#fef2f2;';
+
+          var badges = '';
+          if (isBase) badges += ' 📍';
+          if (isWinner) badges += ' 🏆';
+
+          var monthlyTxt = r.failed ? '<span style="color:#94a3b8;">—</span>' :
+            (r.isCash ? '<em style="color:#64748b;">N/A</em>' :
+            (r.isSinglePay && r.monthly === 0 ? '<em style="color:#64748b;">1-pay</em>' : fmt(r.monthly)));
+          var dasTxt = r.failed ? '—' : fmt(r.das);
+          var payTxt = r.failed ? '—' : fmt(r.totalPay);
+          var buyTxt = r.failed ? '—' : (r.buyout > 0 ? fmt(r.buyout) : '—');
+          var totalTxt = (r.failed || r.total <= 0) ? '<span style="color:#94a3b8;">—</span>' : fmt(r.total);
+          var cpmTxt = (r.failed || r.cpm <= 0) ? '—' : ('$' + r.cpm.toFixed(4));
+
+          return '<tr style="border-bottom:1px solid var(--border,#e5e7eb);' + rowBg + '">' +
+            '<td style="padding:6px 8px;font-weight:' + (isBase || isWinner ? '700' : '500') + ';color:#0f172a;white-space:nowrap;">' + r.name + badges + '</td>' +
+            '<td style="padding:6px 8px;color:#64748b;font-size:0.68rem;max-width:200px;">' + r.desc + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + monthlyTxt + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + dasTxt + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + payTxt + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + buyTxt + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;font-weight:' + (isWinner ? '700' : '500') + ';">' + totalTxt + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#334155;">' + cpmTxt + '</td>' +
+            '<td style="padding:6px 8px;text-align:right;font-weight:600;color:' + deltaColor + ';font-variant-numeric:tabular-nums;">' + deltaTxt + '</td>' +
+          '</tr>';
+        }).join('');
+      }
+
       // ============================================================
       // SECTION 7: API HANDLERS
       // ============================================================
@@ -19998,6 +20182,12 @@ body.dark-theme {
                 ? card.querySelector(".fuelTankSize").value
                 : 14,
             ) || 14,
+          balloonTerm:
+            parseInt(
+              card.querySelector(".balloonTerm")
+                ? card.querySelector(".balloonTerm").value
+                : 60,
+            ) || 60,
           balloonMonthDue:
             parseInt(
               card.querySelector(".balloonMonthDue")
@@ -20021,6 +20211,11 @@ body.dark-theme {
                 ? card.querySelector(".balloonApr").value
                 : 0,
             ) || 0,
+          balloonAmount: getNum(
+            card.querySelector(".balloonAmount")
+              ? card.querySelector(".balloonAmount").value
+              : 0,
+          ),
         };
       }
 
@@ -20095,6 +20290,7 @@ body.dark-theme {
         // back-compat in case other callers still reference it.
         // setTimeout(function() { if (typeof updatePairwiseComparisons === 'function') updatePairwiseComparisons(); }, 150);
         try { generateScenarioCompare(card); } catch(e) { console.warn('scenario-compare failed:', e); }
+        try { populateDealComparison(card); } catch(e) { console.warn('deal-compare failed:', e); }
       }
 
       // ============================================================
@@ -20108,7 +20304,6 @@ body.dark-theme {
 
         var dealTypeEl = card.querySelector('.dealType');
         var dealType = dealTypeEl ? dealTypeEl.value : 'lease';
-        // Only lease/balloon scenarios make sense — finance/cash don't have cap reductions
         if (dealType !== 'lease' && dealType !== 'balloon' && dealType !== 'balloonfinance') {
           section.style.display = 'none';
           return;
@@ -20117,15 +20312,24 @@ body.dark-theme {
 
         var baseParams = gatherParams(card);
         var downAmt  = parseFloat(baseParams.downPayment)  || 0;
-        var tradeEq  = parseFloat(baseParams.tradeEquity)  || 0;
+        var tradeAllowance = parseFloat(baseParams.tradeAllowance) || 0;
+        var payoffAmount   = parseFloat(baseParams.payoffAmount)   || 0;
+        var tradeEq  = tradeAllowance - payoffAmount;
+        var hasUncappedFees = false;
+        var feeFields = ['acqFee','docFee','regFee','titleFee','otherFees'];
+        var capFields = ['capAcquisition','capDealer','capReg','capTitle','capOther'];
+        for (var fi = 0; fi < feeFields.length; fi++) {
+          var feeAmt = parseFloat(baseParams[feeFields[fi]]) || 0;
+          var isCapped = !!baseParams[capFields[fi]];
+          if (feeAmt > 0 && !isCapped) { hasUncappedFees = true; break; }
+        }
 
-        // If no down and no trade equity, there's nothing to compare — hide the section
-        if (downAmt <= 0 && tradeEq <= 0) {
+        if (downAmt <= 0 && tradeEq <= 0 && !hasUncappedFees) {
           section.style.display = 'none';
           return;
         }
 
-        var downLabels  = { capreduction: 'Cap Red.', split5050: 'Split 50/50', atbuyout: 'At Buyout' };
+        var downLabels  = { capreduction: 'Cap Red.', split5050: 'Split 50/50', atbuyout: 'At Buyout', signingcash: 'Signing Cash' };
         var tradeLabels = { capreduction: 'Cap Red.', split5050: 'Split 50/50', atbuyout: 'At Buyout', checkback: 'Check Back' };
 
         var scenarios = [
@@ -20134,11 +20338,10 @@ body.dark-theme {
           { name: 'All At Buyout',                        overrides: { downScenario: 'atbuyout',      tradeScenario: 'atbuyout',      zeroDrive: false } },
           { name: 'Down Cap-Red, Trade Check-Back',       overrides: { downScenario: 'capreduction', tradeScenario: 'checkback',    zeroDrive: false } },
           { name: 'Split 50/50 Both',                     overrides: { downScenario: 'split5050',    tradeScenario: 'split5050',    zeroDrive: false } },
-          { name: 'Zero Drive-Off (Cap-Red Both)',        overrides: { downScenario: 'capreduction', tradeScenario: 'capreduction', zeroDrive: true  } },
+          { name: 'Zero Drive-Off',                       overrides: { downScenario: 'capreduction', tradeScenario: 'capreduction', zeroDrive: true  } },
           { name: 'Down At Buyout, Trade Check-Back',     overrides: { downScenario: 'atbuyout',     tradeScenario: 'checkback',    zeroDrive: false } }
         ];
 
-        // Run each scenario through the calculator
         var runCalc = function(p) {
           var leaseTypeEl = card.querySelector('.leaseType');
           var leaseType = leaseTypeEl ? leaseTypeEl.value : 'closedend';
@@ -20149,15 +20352,11 @@ body.dark-theme {
           return calculateLease(p);
         };
 
-        // Robust TCO extraction: singlepay/balloon/finance variants don't all return .totalCostToOwn,
-        // so we fall back through a known list of cost-equivalent fields.
         var extractTCO = function(r) {
           if (!r) return 0;
           var candidates = [
-            r.totalCostToOwn,
-            r.totalCost,              // balloon
-            r.totalSinglePay,         // single-pay
-            r.signingPlusPayments,    // common fallback (DAS + payments)
+            r.totalCostToOwn, r.totalCost, r.totalSinglePay,
+            r.signingPlusPayments,
             (parseFloat(r.totalDueAtSigning)||0) + (parseFloat(r.totalPayments)||0)
           ];
           for (var i = 0; i < candidates.length; i++) {
@@ -20170,7 +20369,6 @@ body.dark-theme {
           if (!r) return 0;
           var m = parseFloat(r.totalMonthly);
           if (!isNaN(m) && m > 0) return m;
-          // single-pay lease has $0 monthly but a big DAS — derive implied monthly from DAS/term
           var das  = parseFloat(r.totalDueAtSigning) || parseFloat(r.totalSinglePay) || 0;
           var term = parseFloat(r.term) || (r.leaseResult && parseFloat(r.leaseResult.term)) || 0;
           if (das > 0 && term > 0 && r.type === 'singlepay') return das / term;
@@ -20184,23 +20382,39 @@ body.dark-theme {
           var downSc  = p.downScenario  || 'capreduction';
           var tradeSc = p.tradeScenario || 'capreduction';
           var zd      = !!p.zeroDrive;
+
+          var monthly = extractMonthly(r);
+          var das     = parseFloat(r && r.totalDueAtSigning) || 0;
+          var adjCap  = parseFloat(r && r.adjCapCost) || 0;
+          var capRed  = parseFloat(r && r.capReductions) || 0;
+          var tPay    = parseFloat(r && r.totalPayments) || 0;
+          var buyout  = parseFloat(r && r.effectiveBuyoutCost) || 0;
+          var chkBack = parseFloat(r && r.checkBackRebate) || 0;
+          var tco     = extractTCO(r);
+          var cpm     = parseFloat(r && r.costPerMile) || 0;
+          var downApp = parseFloat(r && r.downApplied) || 0;
+          var tradApp = parseFloat(r && r.tradeApplied) || 0;
+          var tradBuy = parseFloat(r && r.tradeBuyout) || 0;
+          var downBuy = parseFloat(r && r.downBuyout) || 0;
+
+          if (zd) {
+            das = 0;
+          }
+
           return {
-            name:        sc.name,
-            isBaseline:  !!sc.isBaseline,
-            failed:      !r,
-            err:         err,
-            downLabel:   downAmt  > 0 ? downLabels[downSc]   : '—',
-            tradeLabel:  tradeEq  > 0 ? tradeLabels[tradeSc] : '—',
-            zeroDrive:   zd,
-            monthly:     extractMonthly(r),
-            das:         parseFloat(r && r.totalDueAtSigning) || 0,
-            tco:         extractTCO(r),
-            cpm:         parseFloat(r && r.costPerMile)       || 0,
+            name: sc.name, isBaseline: !!sc.isBaseline, failed: !r, err: err,
+            downLabel:   downAmt > 0  ? (downLabels[downSc]   || downSc)  : '—',
+            tradeLabel:  tradeEq > 0  ? (tradeLabels[tradeSc] || tradeSc) : (tradeEq < 0 ? 'Neg. Equity' : '—'),
+            zeroDrive: zd,
+            monthly: monthly, das: das, adjCap: adjCap, capRed: capRed,
+            totalPay: tPay, buyout: buyout, chkBack: chkBack,
+            tco: tco, cpm: cpm,
+            downApplied: downApp, tradeApplied: tradApp,
+            tradeBuyout: tradBuy, downBuyout: downBuy,
             isSinglePay: !!(r && r.type === 'singlepay')
           };
         });
 
-        // Identify baseline TCO + winner (lowest non-zero TCO — baseline CAN win)
         var baseline   = rows.filter(function(r) { return r.isBaseline; })[0];
         var baseTCO    = baseline ? baseline.tco : 0;
         var validRows  = rows.filter(function(r) { return !r.failed && r.tco > 0; });
@@ -20217,23 +20431,17 @@ body.dark-theme {
           var delta      = r.tco - baseTCO;
           var deltaTxt, deltaColor;
           if (r.failed || r.tco <= 0) {
-            deltaTxt = 'n/a';
-            deltaColor = '#94a3b8';
+            deltaTxt = 'n/a'; deltaColor = '#94a3b8';
           } else if (isBaseline) {
-            deltaTxt = '—';
-            deltaColor = '#64748b';
+            deltaTxt = '—'; deltaColor = '#64748b';
           } else if (Math.abs(delta) < 0.5) {
-            deltaTxt = '$0';
-            deltaColor = '#64748b';
+            deltaTxt = '$0'; deltaColor = '#64748b';
           } else if (delta < 0) {
-            deltaTxt = '−' + fmt(Math.abs(delta));
-            deltaColor = '#16a34a';
+            deltaTxt = '−' + fmt(Math.abs(delta)); deltaColor = '#16a34a';
           } else {
-            deltaTxt = '+' + fmt(delta);
-            deltaColor = '#dc2626';
+            deltaTxt = '+' + fmt(delta); deltaColor = '#dc2626';
           }
 
-          // Row background: winner (green) trumps baseline (blue); if both, blend.
           var rowBg = '';
           if (isBaseline && isWinner)      rowBg = 'background:linear-gradient(90deg,#dbeafe 0%,#dcfce7 100%);';
           else if (isWinner)               rowBg = 'background:#dcfce7;';
@@ -20249,21 +20457,27 @@ body.dark-theme {
             ? '<span style="color:#94a3b8;">calc failed</span>'
             : (r.isSinglePay && r.monthly === 0 ? '<em style="color:#64748b;">1-pay</em>' : fmt(r.monthly));
           var dasDisplay = r.failed ? '—' : fmt(r.das);
+          var adjCapDisplay = r.failed ? '—' : fmt(r.adjCap);
+          var totalPayDisplay = r.failed ? '—' : fmt(r.totalPay);
+          var buyoutDisplay = r.failed ? '—' : (r.buyout > 0 ? fmt(r.buyout) : '—');
+          var chkBackDisplay = (r.failed || r.chkBack <= 0) ? '—' : fmt(r.chkBack);
           var tcoDisplay = (r.failed || r.tco <= 0)
             ? '<span style="color:#94a3b8;">—</span>'
             : fmt(r.tco);
-          var cpmDisplay = (r.failed || r.cpm <= 0)
-            ? '—'
-            : ('$' + r.cpm.toFixed(4));
+          var cpmDisplay = (r.failed || r.cpm <= 0) ? '—' : ('$' + r.cpm.toFixed(4));
 
           return (
             '<tr style="border-bottom:1px solid var(--border);' + rowBg + '">' +
-              '<td style="padding:6px 8px;font-weight:' + (isBaseline || isWinner ? '700' : '500') + ';color:#0f172a;">' + nameCell + '</td>' +
+              '<td style="padding:6px 8px;font-weight:' + (isBaseline || isWinner ? '700' : '500') + ';color:#0f172a;white-space:nowrap;">' + nameCell + '</td>' +
               '<td style="padding:6px 8px;color:#334155;">' + r.downLabel + '</td>' +
               '<td style="padding:6px 8px;color:#334155;">' + r.tradeLabel + '</td>' +
               '<td style="padding:6px 8px;text-align:center;color:#334155;">' + (r.zeroDrive ? '✓' : '—') + '</td>' +
+              '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + adjCapDisplay + '</td>' +
               '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + monthlyDisplay + '</td>' +
               '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + dasDisplay + '</td>' +
+              '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + totalPayDisplay + '</td>' +
+              '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;">' + buyoutDisplay + '</td>' +
+              '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#334155;">' + chkBackDisplay + '</td>' +
               '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#0f172a;font-weight:' + (isWinner ? '700' : '500') + ';">' + tcoDisplay + '</td>' +
               '<td style="padding:6px 8px;text-align:right;font-variant-numeric:tabular-nums;color:#334155;">' + cpmDisplay + '</td>' +
               '<td style="padding:6px 8px;text-align:right;font-weight:600;color:' + deltaColor + ';font-variant-numeric:tabular-nums;">' + deltaTxt + '</td>' +

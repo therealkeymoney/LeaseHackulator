@@ -159,11 +159,22 @@ function wireCardEvents(card, id) {
         case 'apply-scenario':
           applyScenario(card, id);
           break;
+        case 'lookup-property':
+          handlePropertyLookup(card, id);
+          break;
         case 'decode-vin':
           break; // Housing doesn't use VIN
       }
     });
   });
+
+  // Enter key in the smart lookup input triggers the lookup
+  const lookupInput = card.querySelector('.listingLookupInput');
+  if (lookupInput) {
+    lookupInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); handlePropertyLookup(card, id); }
+    });
+  }
 
   // Deal type toggle: show/hide conditional sections
   const dealTypeSelect = card.querySelector('.dealType');
@@ -357,6 +368,369 @@ function updateBadge(card, className, text) {
     badge.classList.remove('hidden');
   } else {
     badge.classList.add('hidden');
+  }
+}
+
+// ============================================================
+//  Property Listing Auto-Population (RentCast)
+//  Housing analog of the vehicle VIN-decode flow. Type/paste a
+//  listing URL, address, or MLS# and auto-fill the whole card.
+//
+//  DATA SOURCE: RentCast (https://app.rentcast.io/app/api). Real-estate
+//  listing data is NOT free/public like VIN data, so this needs a key.
+//  Two ways to wire it (proxy strongly recommended):
+//    1) Deploy propertyproxyworker.js to a free Cloudflare Worker, then set
+//         window.PROPERTY_PROXY_URL = "https://property.YOURNAME.workers.dev";
+//       (keeps your key server-side; unlocks URL + MLS# lookup).
+//    2) Or set window.RENTCAST_API_KEY = "..." for a direct address lookup
+//       (browser CORS usually blocks this — proxy is the supported path).
+//  Set either from the DevTools console at runtime, or hardcode the
+//  _DEFAULT constants just below.
+// ============================================================
+
+const PROPERTY_PROXY_URL_DEFAULT = '';   // e.g. 'https://property.you.workers.dev'
+const RENTCAST_API_KEY_DEFAULT   = '';   // e.g. 'rc_xxx' (direct address lookup only)
+
+function _propProxyUrl() {
+  return ((typeof window !== 'undefined' && window.PROPERTY_PROXY_URL) || PROPERTY_PROXY_URL_DEFAULT || '').replace(/\/+$/, '');
+}
+function _rentcastKey() {
+  return (typeof window !== 'undefined' && window.RENTCAST_API_KEY) || RENTCAST_API_KEY_DEFAULT || '';
+}
+
+// Parse a pasted listing URL (Zillow/Redfin/Realtor/Trulia/Homes.com/…) into
+// a best-effort free-form address string RentCast can geocode.
+function parseListingUrl(raw) {
+  if (!raw) return null;
+  let u;
+  try { u = new URL(raw.trim()); } catch (_) { return null; }
+  const host = u.hostname.replace(/^www\./, '').toLowerCase();
+  const segs = u.pathname.split('/').filter(Boolean);
+  const deslug = (s) => decodeURIComponent(s || '')
+    .replace(/[_+]/g, ' ').replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // Zillow: /homedetails/1234-Main-St-City-ST-12345/12345_zpid/
+  if (host.indexOf('zillow.') >= 0) {
+    const i = segs.indexOf('homedetails');
+    if (i >= 0 && segs[i + 1]) return { address: deslug(segs[i + 1]) };
+  }
+  // Redfin: /{ST}/{City}/{Street-Zip}/home/{id}
+  if (host.indexOf('redfin.') >= 0) {
+    if (segs.length >= 3 && /^[A-Z]{2}$/i.test(segs[0])) {
+      return { address: `${deslug(segs[2])} ${deslug(segs[1])} ${segs[0].toUpperCase()}`.trim() };
+    }
+  }
+  // Realtor: /realestateandhomes-detail/1234-Main-St_City_ST_12345_M...-...
+  if (host.indexOf('realtor.') >= 0) {
+    const i = segs.indexOf('realestateandhomes-detail');
+    const slug = i >= 0 ? segs[i + 1] : segs[segs.length - 1];
+    if (slug) return { address: deslug(slug.replace(/_M\d+[-\d]*$/i, '')) };
+  }
+  // Trulia: /p/{st}/{city}/{slug--id} or /home/{slug}
+  if (host.indexOf('trulia.') >= 0) {
+    const slug = segs[segs.length - 1] || '';
+    return { address: deslug(slug.replace(/--\d+$/, '')) };
+  }
+  // Homes.com / generic: pick the most address-like segment (has a number)
+  const cand = segs.slice().reverse().find((s) => /\d/.test(s) && s.length > 4);
+  if (cand) return { address: deslug(cand) };
+  return null;
+}
+
+// --- Client-side RentCast normalization (used only for the direct-key
+// fallback; the proxy already returns this shape). Mirrors buildPayload()
+// in propertyproxyworker.js. ---
+function _mapPropertyTypeClient(t) {
+  const s = String(t || '').toLowerCase();
+  if (s.indexOf('single') >= 0) return 'single_family';
+  if (s.indexOf('condo') >= 0 || s.indexOf('town') >= 0) return 'condo';
+  if (s.indexOf('multi') >= 0 || s.indexOf('apartment') >= 0 || s.indexOf('duplex') >= 0) return 'multi_family';
+  if (s.indexOf('manufactured') >= 0 || s.indexOf('mobile') >= 0) return 'manufactured';
+  return 'single_family';
+}
+function _num(v) {
+  if (v == null) return null;
+  const x = parseFloat(String(v).replace(/[$,]/g, ''));
+  return isNaN(x) ? null : x;
+}
+function _taxHistoryClient(propertyTaxes) {
+  const out = [];
+  if (propertyTaxes && typeof propertyTaxes === 'object') {
+    for (const k of Object.keys(propertyTaxes)) {
+      const row = propertyTaxes[k] || {};
+      const year = row.year || parseInt(k, 10) || null;
+      const total = row.total != null ? row.total : (row.amount != null ? row.amount : null);
+      if (year && total != null) out.push({ year, amount: total });
+    }
+  }
+  out.sort((a, b) => b.year - a.year);
+  return out;
+}
+function _priceHistoryClient() {
+  const merged = {};
+  for (let i = 0; i < arguments.length; i++) {
+    const hist = arguments[i];
+    if (!hist || typeof hist !== 'object') continue;
+    for (const dateKey of Object.keys(hist)) {
+      const ev = hist[dateKey] || {};
+      const date = ev.date || dateKey;
+      const price = ev.price != null ? ev.price : null;
+      if (price == null) continue;
+      const idk = date + '|' + price;
+      if (!merged[idk]) merged[idk] = { date, price, event: ev.event || ev.listingType || 'Price' };
+    }
+  }
+  return Object.keys(merged).map((k) => merged[k])
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+}
+function normalizeRentcast(listing, record, avm) {
+  listing = listing || {}; record = record || {}; avm = avm || null;
+  const agent = listing.listingAgent || {};
+  const office = listing.listingOffice || {};
+  const taxHistory = _taxHistoryClient(record.propertyTaxes);
+  const priceHistory = _priceHistoryClient(listing.history, record.history);
+  const property = {
+    formattedAddress: listing.formattedAddress || record.formattedAddress || null,
+    addressLine1: listing.addressLine1 || record.addressLine1 || null,
+    city: listing.city || record.city || null,
+    state: listing.state || record.state || null,
+    zipCode: listing.zipCode || record.zipCode || null,
+    county: record.county || listing.county || null,
+    propertyType: _mapPropertyTypeClient(listing.propertyType || record.propertyType),
+    bedrooms: listing.bedrooms != null ? listing.bedrooms : record.bedrooms,
+    bathrooms: listing.bathrooms != null ? listing.bathrooms : record.bathrooms,
+    squareFootage: listing.squareFootage != null ? listing.squareFootage : record.squareFootage,
+    lotSize: listing.lotSize != null ? listing.lotSize : record.lotSize,
+    yearBuilt: listing.yearBuilt != null ? listing.yearBuilt : record.yearBuilt,
+    listPrice: _num(listing.price),
+    status: listing.status || null,
+    daysOnMarket: listing.daysOnMarket != null ? listing.daysOnMarket : null,
+    mlsNumber: listing.mlsNumber || null,
+    mlsName: listing.mlsName || null,
+    listingAgent: agent.name || null,
+    listingAgentPhone: agent.phone || null,
+    brokerage: office.name || agent.website || null,
+    lastSalePrice: _num(record.lastSalePrice),
+    hoaFee: record.hoa && record.hoa.fee != null ? _num(record.hoa.fee) : null,
+    annualPropertyTax: taxHistory.length ? taxHistory[0].amount : null,
+    avmValue: avm && avm.price != null ? _num(avm.price) : null,
+  };
+  return { property, priceHistory, taxHistory };
+}
+
+// Fetch normalized property data. kind = 'property' | 'mls'. Tries the proxy
+// first, then a direct RentCast key (address-only). Returns
+// { ok, property, priceHistory, taxHistory, ... } or throws.
+async function fetchPropertyData(kind, paramsObj) {
+  const qs = new URLSearchParams(paramsObj).toString();
+  const proxy = _propProxyUrl();
+  if (proxy) {
+    const r = await fetch(proxy + '/' + kind + '?' + qs);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.ok === false) throw new Error((d && d.error) || ('proxy HTTP ' + r.status));
+    return d;
+  }
+  // Direct RentCast fallback — address-based property lookup only.
+  const key = _rentcastKey();
+  if (!key) {
+    throw new Error('No property data source configured. Deploy propertyproxyworker.js and set window.PROPERTY_PROXY_URL, or set window.RENTCAST_API_KEY.');
+  }
+  if (kind !== 'property' || !paramsObj.address) {
+    throw new Error('Direct RentCast key supports address lookup only. Deploy the proxy worker for URL/MLS# lookup.');
+  }
+  const h = { 'X-Api-Key': key, Accept: 'application/json' };
+  const enc = encodeURIComponent(paramsObj.address);
+  const grab = (path) => fetch('https://api.rentcast.io/v1' + path, { headers: h })
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [listing, record] = await Promise.all([
+    grab('/listings/sale?address=' + enc),
+    grab('/properties?address=' + enc),
+  ]);
+  const l = Array.isArray(listing) ? listing[0] : listing;
+  const rec = Array.isArray(record) ? record[0] : record;
+  if (!l && !rec) throw new Error('No RentCast data for that address (or the browser blocked the request via CORS — use the proxy).');
+  return { ok: true, source: 'rentcast-direct', ...normalizeRentcast(l, rec, null) };
+}
+
+// Populate all card fields from a normalized property object.
+function applyPropertyData(card, p) {
+  if (!card || !p) return [];
+  const filled = [];
+  const set = (sel, val, label) => {
+    if (val == null || val === '' || (typeof val === 'number' && isNaN(val))) return;
+    setFieldValue(card, sel, val);
+    if (label) filled.push(label);
+  };
+
+  // Address block — set state FIRST (fires state defaults) so the RentCast
+  // tax value we set later isn't clobbered by mill-rate recalcs.
+  const streetOnly = p.addressLine1 ||
+    (p.formattedAddress ? String(p.formattedAddress).split(',')[0] : null);
+  if (p.state) {
+    const stateSel = card.querySelector('.propState');
+    if (stateSel) {
+      stateSel.value = p.state;
+      stateSel.dispatchEvent(new Event('change', { bubbles: true }));
+      filled.push('State');
+    }
+  }
+  set('.propertyAddress', streetOnly, 'Address');
+  set('.propCity', p.city, 'City');
+  set('.propZip', p.zipCode, 'ZIP');
+  set('.propCounty', p.county, 'County');
+
+  if (p.propertyType) {
+    const sel = card.querySelector('.propertyType');
+    if (sel) { sel.value = p.propertyType; filled.push('Type'); }
+  }
+  set('.yearBuilt', p.yearBuilt, 'Year Built');
+  set('.bedrooms', p.bedrooms, 'Beds');
+  set('.bathrooms', p.bathrooms, 'Baths');
+  set('.sqft', p.squareFootage, 'Sq Ft');
+  if (p.lotSize != null && !isNaN(p.lotSize)) {
+    // RentCast lot size is in square feet → the card wants acres.
+    const acres = p.lotSize > 50 ? (p.lotSize / 43560) : p.lotSize;
+    set('.lotSize', Math.round(acres * 1000) / 1000, 'Lot');
+  }
+
+  // Listing / agent
+  set('.mlsNumber', p.mlsNumber, 'MLS#');
+  set('.daysOnMarket', p.daysOnMarket, 'DOM');
+  set('.listingAgent', p.listingAgent, 'Agent');
+  set('.agentPhone', p.listingAgentPhone, 'Agent Phone');
+  set('.brokerage', p.brokerage, 'Brokerage');
+  set('.listingSource', p.mlsName || 'RentCast', 'Source');
+
+  // Pricing — list price, purchase price (default to list), appraised (AVM)
+  if (p.listPrice != null && p.listPrice > 0) {
+    set('.listPrice', fmt(p.listPrice), 'List Price');
+    const purchaseEl = card.querySelector('.purchasePrice');
+    if (purchaseEl && getNum(purchaseEl.value) <= 0) {
+      purchaseEl.value = fmt(p.listPrice);
+      purchaseEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+  if (p.avmValue != null && p.avmValue > 0) set('.appraisedValue', fmt(p.avmValue), 'AVM');
+
+  // Listing URL (persist the pasted one if the field is empty)
+  const lookupRaw = (card.querySelector('.listingLookupInput') || {}).value || '';
+  if (/^https?:\/\//i.test(lookupRaw)) {
+    const urlEl = card.querySelector('.listingUrl');
+    if (urlEl && !urlEl.value) urlEl.value = lookupRaw.trim();
+  }
+
+  // HOA (RentCast hoa.fee is a monthly figure)
+  if (p.hoaFee != null && p.hoaFee > 0) set('.monthlyHOA', fmt(p.hoaFee), 'HOA');
+
+  // Property tax — set LAST so it wins over any state-default recalc.
+  if (p.annualPropertyTax != null && p.annualPropertyTax > 0) {
+    setFieldValue(card, '.annualPropertyTax', fmt(p.annualPropertyTax));
+    setFieldValue(card, '.monthlyPropertyTax', fmt(p.annualPropertyTax / 12));
+    filled.push('Property Tax');
+  }
+
+  return filled;
+}
+
+// Render price history + tax history under the Pricing section.
+function renderPropertyHistory(card, priceHistory, taxHistory) {
+  const out = card.querySelector('.property-history-output');
+  if (!out) return;
+  const ph = (priceHistory || []).slice(0, 8);
+  const th = (taxHistory || []).slice(0, 6);
+  if (!ph.length && !th.length) { out.innerHTML = ''; return; }
+
+  let html = '';
+  if (ph.length) {
+    html += '<div style="margin-top:8px;"><strong style="color:var(--primary);font-size:0.78rem;">📉 Price History</strong>' +
+      '<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:0.72rem;">' +
+      '<thead><tr style="text-align:left;color:#64748b;"><th style="padding:2px 6px;">Date</th><th style="padding:2px 6px;">Event</th><th style="padding:2px 6px;text-align:right;">Price</th></tr></thead><tbody>';
+    html += ph.map((h) =>
+      '<tr style="border-top:1px solid var(--border,#e5e7eb);"><td style="padding:2px 6px;">' + (h.date || '—') +
+      '</td><td style="padding:2px 6px;color:#475569;">' + (h.event || '—') +
+      '</td><td style="padding:2px 6px;text-align:right;font-variant-numeric:tabular-nums;">' + (h.price != null ? fmt(h.price) : '—') + '</td></tr>'
+    ).join('');
+    html += '</tbody></table></div>';
+  }
+  if (th.length) {
+    html += '<div style="margin-top:8px;"><strong style="color:var(--primary);font-size:0.78rem;">🏛️ Property Tax History</strong>' +
+      '<table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:0.72rem;">' +
+      '<thead><tr style="text-align:left;color:#64748b;"><th style="padding:2px 6px;">Year</th><th style="padding:2px 6px;text-align:right;">Annual Tax</th></tr></thead><tbody>';
+    html += th.map((t) =>
+      '<tr style="border-top:1px solid var(--border,#e5e7eb);"><td style="padding:2px 6px;">' + t.year +
+      '</td><td style="padding:2px 6px;text-align:right;font-variant-numeric:tabular-nums;">' + fmt(t.amount) + '</td></tr>'
+    ).join('');
+    html += '</tbody></table></div>';
+  }
+  out.innerHTML = html;
+}
+
+// Orchestrator — wired to the "🔍 Look up" button + Enter key.
+async function handlePropertyLookup(card, id) {
+  const loading = card.querySelector('.listing-lookup-row .field-loading');
+  const errSpan = card.querySelector('.listing-lookup-row .field-error');
+  const setStatus = (msg) => { if (loading) loading.textContent = msg || ''; };
+  const setErr = (msg) => { if (errSpan) errSpan.textContent = msg || ''; };
+  setErr('');
+
+  // Resolve the input: smart box first, then fall back to existing fields.
+  const smart = (card.querySelector('.listingLookupInput') || {}).value || '';
+  const state = (card.querySelector('.propState') || {}).value || '';
+  const city = (card.querySelector('.propCity') || {}).value || '';
+  const zip = (card.querySelector('.propZip') || {}).value || '';
+
+  let kind = 'property';
+  let params = null;
+  const raw = smart.trim();
+
+  if (/^https?:\/\//i.test(raw) || raw.indexOf('zillow.') >= 0 || raw.indexOf('redfin.') >= 0 || raw.indexOf('realtor.') >= 0) {
+    const parsed = parseListingUrl(raw.startsWith('http') ? raw : 'https://' + raw);
+    if (!parsed || !parsed.address) { setErr('Could not read an address from that URL — paste the full listing link or type the address.'); showToast('Could not parse listing URL', true); return; }
+    params = { address: parsed.address };
+  } else if (raw && /^[A-Za-z0-9\- ]{4,}$/.test(raw) && /\d{5,}/.test(raw.replace(/\D/g, '')) && !/\d+\s+\S/.test(raw)) {
+    // Looks like a bare MLS number (mostly digits, no "123 Street" pattern)
+    kind = 'mls';
+    params = { mls: raw.replace(/[^0-9A-Za-z]/g, ''), state, city, zip };
+  } else if (raw) {
+    params = { address: raw };
+  } else {
+    // Fall back to existing fields
+    const url = (card.querySelector('.listingUrl') || {}).value || '';
+    const addr = (card.querySelector('.propertyAddress') || {}).value || '';
+    const mls = (card.querySelector('.mlsNumber') || {}).value || '';
+    if (url) {
+      const parsed = parseListingUrl(url);
+      if (parsed && parsed.address) params = { address: parsed.address };
+    }
+    if (!params && addr) {
+      params = { address: [addr, city, state, zip].filter(Boolean).join(', ') };
+    }
+    if (!params && mls) { kind = 'mls'; params = { mls, state, city, zip }; }
+    if (!params) { setErr('Enter a listing URL, address, or MLS# first.'); showToast('Nothing to look up', true); return; }
+  }
+
+  if (kind === 'mls' && !state && !zip) {
+    setErr('MLS# lookup needs the state (and ideally ZIP) filled in — RentCast has no direct MLS# search.');
+    showToast('Fill in state/ZIP for MLS# lookup', true);
+    return;
+  }
+
+  setStatus('Looking up listing…');
+  updateBadge(card, 'listing-badge', '⏳');
+  try {
+    const d = await fetchPropertyData(kind, params);
+    if (!d || d.ok === false || !d.property) throw new Error((d && d.error) || 'No data returned');
+    const filled = applyPropertyData(card, d.property);
+    renderPropertyHistory(card, d.priceHistory, d.taxHistory);
+    setStatus('');
+    updateBadge(card, 'listing-badge', d.property.mlsNumber ? ('MLS ' + d.property.mlsNumber) : 'Listing ✓');
+    showToast('✓ Populated ' + filled.length + ' fields from listing' + (d.source ? ' (' + d.source + ')' : ''));
+  } catch (e) {
+    setStatus('');
+    updateBadge(card, 'listing-badge', '');
+    setErr(String((e && e.message) || e));
+    showToast('Lookup failed: ' + String((e && e.message) || e), true);
+    console.warn('[property-lookup] failed:', e);
   }
 }
 

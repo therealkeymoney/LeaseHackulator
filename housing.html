@@ -113,6 +113,7 @@
             <span class="credit-tier-badge hidden">Tier 1</span>
             <span class="condition-badge hidden">New</span>
             <span class="loan-type-badge hidden">Conv</span>
+            <span class="listing-badge hidden">Listing</span>
         </div>
         <div class="card-controls">
             <button class="btn btn-small btn-secondary" data-action="duplicate" title="Duplicate">📋</button>
@@ -137,6 +138,19 @@
             <!-- ─────────── PROPERTY INFORMATION ─────────── -->
             <div class="form-section">
                 <h3 class="section-title">🏠 Property Information</h3>
+
+                <!-- ── LISTING AUTO-FILL (mirrors vehicle VIN decode) ── -->
+                <div class="form-row listing-lookup-row" style="align-items:flex-end;">
+                    <div class="form-group grow">
+                        <label>Listing URL, Address, or MLS# <span style="font-size:0.65rem;color:var(--text-muted,#6b7280);font-weight:400;">(paste a Zillow / Redfin / Realtor link, type an address, or an MLS #)</span></label>
+                        <input type="text" class="listingLookupInput" placeholder="https://www.zillow.com/homedetails/…  ·  123 Main St, City, ST  ·  MLS 1234567"/>
+                        <span class="field-loading"></span><span class="field-error"></span>
+                    </div>
+                    <div class="form-group shrink">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-small" data-action="lookup-property" title="Auto-populate this card from the listing (RentCast). Paste a listing URL, type an address, or enter an MLS # with the state/ZIP filled in below.">🔍 Look up</button>
+                    </div>
+                </div>
 
                 <div class="form-row">
                     <div class="form-group grow">
@@ -315,6 +329,10 @@
                         <input type="text" class="closingCostCredit" placeholder="$0"/>
                     </div>
                 </div>
+
+                <div class="form-row"><div class="form-group grow">
+                    <div class="property-history-output" style="font-size:0.75rem;"></div>
+                </div></div>
             </div>
 
             <!-- ─────────── DEAL TYPE & LOAN TERMS ─────────── -->

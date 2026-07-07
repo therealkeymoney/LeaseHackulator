@@ -633,6 +633,168 @@ export function calculateRentVsBuy(params = {}) {
 }
 
 // ============================================================
+//  2a. calculateCashPurchase  (outright, no loan)
+// ============================================================
+
+export function calculateCashPurchase(params = {}) {
+  // Reuse the mortgage engine for tax / insurance / utilities / assessed
+  // value, then strip out everything loan-related.
+  const m = calculateMortgage(params);
+
+  const purchasePrice    = m.purchasePrice;
+  const appreciation     = n(params.annualAppreciation, 3);
+  const investmentReturn = n(params.investmentReturn, 7);
+  const maintenancePct   = n(params.maintenancePct, 1);
+  const years            = n(params.yearsToAnalyze, 10);
+
+  const sellerCredits     = n(params.sellerCredits);
+  const closingCostCredit = n(params.closingCostCredit);
+
+  // Cash closing = non-loan settlement items only (no origination,
+  // underwriting, application, points, or lender appraisal).
+  const cashClosingCosts = n(params.titleInsurance)
+    + n(params.recordingFee, 125)
+    + n(params.transferTax)
+    + n(params.inspectionFee, 400);
+
+  const totalCashToPurchase = Math.max(0,
+    purchasePrice + cashClosingCosts - sellerCredits - closingCostCredit);
+
+  // Monthly ownership cost (no P&I, no PMI)
+  const monthlyPropertyTax = m.annualPropertyTax / 12;
+  const monthlyInsurance   = m.annualInsurance / 12;
+  const monthlyHOA         = m.monthlyHOA || 0;
+  const monthlyUtilities   = m.totalMonthlyUtilities || 0;
+  const monthlyMaintenance = (purchasePrice * (maintenancePct / 100)) / 12;
+  const monthlyOwnershipCost = monthlyPropertyTax + monthlyInsurance
+    + monthlyHOA + monthlyUtilities + monthlyMaintenance;
+
+  // Horizon totals (maintenance grows with home value)
+  let totalOngoing = 0, totalMaintenance = 0, totalPropertyTax = 0;
+  let currentValue = purchasePrice;
+  for (let y = 1; y <= years; y++) {
+    const maint = currentValue * (maintenancePct / 100);
+    totalPropertyTax += m.annualPropertyTax;
+    totalMaintenance += maint;
+    totalOngoing += m.annualPropertyTax + m.annualInsurance
+      + monthlyHOA * 12 + m.annualUtilities + maint;
+    currentValue *= (1 + appreciation / 100);
+  }
+
+  const homeValueAtEnd = purchasePrice * Math.pow(1 + appreciation / 100, years);
+  const equityGain = homeValueAtEnd - purchasePrice;
+
+  // Opportunity cost: all cash invested instead of tied up in the home
+  const capitalInvested = totalCashToPurchase * Math.pow(1 + investmentReturn / 100, years);
+  const opportunityCost = capitalInvested - totalCashToPurchase;
+
+  const totalCostOfOwnership = totalCashToPurchase + totalOngoing;
+  const netCostAfterEquity = totalCashToPurchase + totalOngoing + opportunityCost - homeValueAtEnd;
+
+  return {
+    type: 'cash',
+    label: 'Cash Purchase',
+    purchasePrice,
+    cashClosingCosts,
+    totalCashToPurchase,
+    assessedValue: m.assessedValue,
+    annualPropertyTax: m.annualPropertyTax,
+    annualInsurance: m.annualInsurance,
+    monthlyPropertyTax, monthlyInsurance, monthlyHOA, monthlyUtilities,
+    monthlyMaintenance, monthlyOwnershipCost,
+    loanAmount: 0, monthlyPI: 0, totalInterest: 0, monthlyPMI: 0,
+    totalMonthly: monthlyOwnershipCost,
+    totalMonthlyHousingCost: monthlyOwnershipCost,
+    years, appreciation,
+    homeValueAtEnd, equityGain,
+    opportunityCost, capitalInvested,
+    totalOngoing, totalMaintenance, totalPropertyTax,
+    totalCostOfOwnership, netCostAfterEquity,
+    formatted: {
+      purchasePrice:        fmt(purchasePrice),
+      cashClosingCosts:     fmt(cashClosingCosts),
+      totalCashToPurchase:  fmt(totalCashToPurchase),
+      monthlyPropertyTax:   fmt(monthlyPropertyTax),
+      monthlyInsurance:     fmt(monthlyInsurance),
+      monthlyHOA:           fmt(monthlyHOA),
+      monthlyUtilities:     fmt(monthlyUtilities),
+      monthlyMaintenance:   fmt(monthlyMaintenance),
+      monthlyOwnershipCost: fmt(monthlyOwnershipCost),
+      annualPropertyTax:    fmt(m.annualPropertyTax),
+      annualInsurance:      fmt(m.annualInsurance),
+      homeValueAtEnd:       fmt(homeValueAtEnd),
+      equityGain:           fmt(equityGain),
+      opportunityCost:      fmt(opportunityCost),
+      totalOngoing:         fmt(totalOngoing),
+      totalCostOfOwnership: fmt(totalCostOfOwnership),
+      netCostAfterEquity:   fmt(netCostAfterEquity),
+    },
+  };
+}
+
+// ============================================================
+//  2c. calculateRentalOnly  (pure renting, no ownership)
+// ============================================================
+
+export function calculateRentalOnly(params = {}) {
+  const monthlyRent        = n(params.monthlyRent, 1800);
+  const annualRentIncrease = n(params.annualRentIncrease, 3);
+  const rentersInsurance   = n(params.rentersInsurance, 25); // monthly
+  const securityDeposit    = n(params.securityDeposit);
+  const monthlyUtilities   = n(params.monthlyUtilities);
+  const years              = n(params.yearsToAnalyze, 3);
+
+  let totalRent = 0, totalRentersIns = 0, totalUtilities = 0;
+  let currentRent = monthlyRent;
+  const rentByYear = [];
+  for (let y = 1; y <= years; y++) {
+    const annualRent = currentRent * 12;
+    const annualIns  = rentersInsurance * 12;
+    const annualUtil = monthlyUtilities * 12;
+    totalRent += annualRent;
+    totalRentersIns += annualIns;
+    totalUtilities += annualUtil;
+    rentByYear.push({
+      year: y,
+      monthlyRent: Math.round(currentRent * 100) / 100,
+      annualRent: Math.round(annualRent * 100) / 100,
+      cumulative: Math.round((totalRent + totalRentersIns + totalUtilities) * 100) / 100,
+    });
+    currentRent *= (1 + annualRentIncrease / 100);
+  }
+
+  const monthlyTotal = monthlyRent + rentersInsurance + monthlyUtilities;
+  const totalCost = totalRent + totalRentersIns + totalUtilities;
+  const avgMonthly = years > 0 ? totalCost / (years * 12) : monthlyTotal;
+
+  return {
+    type: 'rental',
+    label: 'Rental',
+    monthlyRent, annualRentIncrease, rentersInsurance,
+    securityDeposit, monthlyUtilities, years,
+    monthlyTotal,
+    totalMonthly: monthlyTotal,
+    totalMonthlyHousingCost: monthlyTotal,
+    totalRent, totalRentersIns, totalUtilities,
+    totalCost, avgMonthly,
+    rentByYear,
+    equityAtEnd: 0, // renting builds no equity
+    formatted: {
+      monthlyRent:      fmt(monthlyRent),
+      rentersInsurance: fmt(rentersInsurance),
+      monthlyUtilities: fmt(monthlyUtilities),
+      securityDeposit:  fmt(securityDeposit),
+      monthlyTotal:     fmt(monthlyTotal),
+      totalRent:        fmt(totalRent),
+      totalRentersIns:  fmt(totalRentersIns),
+      totalUtilities:   fmt(totalUtilities),
+      totalCost:        fmt(totalCost),
+      avgMonthly:       fmt(avgMonthly),
+    },
+  };
+}
+
+// ============================================================
 //  2b. calculateLeaseToOwn  (rent-to-own / lease-purchase)
 //  Two-stage scenario: lease period → conversion to mortgage
 // ============================================================

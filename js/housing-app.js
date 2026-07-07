@@ -2,6 +2,8 @@ import {
   calculateMortgage,
   calculateRentVsBuy,
   calculateLeaseToOwn,
+  calculateCashPurchase,
+  calculateRentalOnly,
   calculateARM,
   calculateRefinance,
   calculatePropertyTax,
@@ -287,6 +289,8 @@ function toggleConditionalSections(card, dealType) {
     'lto-fields': dealType === 'leasetoown',
     'rvb-fields': dealType === 'rentvsbuy',
     'refi-fields': dealType === 'refinance',
+    'cash-fields': dealType === 'cash',
+    'rental-fields': dealType === 'rentalonly',
   };
   for (const [cls, show] of Object.entries(sections)) {
     const el = card.querySelector(`.${cls}`);
@@ -813,8 +817,28 @@ function calculateProperty(card, id) {
 
   switch (dealType) {
     case 'mortgage':
-    case 'cash':
       result = calculateMortgage(commonParams);
+      break;
+
+    case 'cash':
+      result = calculateCashPurchase({
+        ...commonParams,
+        annualAppreciation: gfv('.cashAppreciation', 3),
+        investmentReturn:   gfv('.cashInvestmentReturn', 7),
+        maintenancePct:     gfv('.cashMaintenancePct', 1),
+        yearsToAnalyze:     gfv('.cashYearsToAnalyze', 10),
+      });
+      break;
+
+    case 'rentalonly':
+      result = calculateRentalOnly({
+        monthlyRent:        gfv('.roMonthlyRent', 1800),
+        annualRentIncrease: gfv('.roAnnualRentIncrease', 3),
+        rentersInsurance:   gfv('.roRentersInsurance', 25),
+        securityDeposit:    gfv('.roSecurityDeposit'),
+        monthlyUtilities:   gfv('.roMonthlyUtilities'),
+        yearsToAnalyze:     gfv('.roYearsToAnalyze', 3),
+      });
       break;
 
     case 'arm':
@@ -1078,6 +1102,10 @@ function renderResults(card, result) {
     html = renderMortgageResults(result);
   } else if (result.type === 'arm') {
     html = renderARMResults(result);
+  } else if (result.type === 'cash') {
+    html = renderCashResults(result);
+  } else if (result.type === 'rental') {
+    html = renderRentalResults(result);
   } else if (result.type === 'leasetoown') {
     html = renderLeaseToOwnResults(result);
   } else if (result.type === 'rentvsbuy') {
@@ -1165,6 +1193,80 @@ function renderMortgageResults(r) {
       ${renderCostAnatomy(r)}
       ${renderDealAssessment(assessDealQuality(r))}
       ${renderAmortizationTable(r.amortization, r.yearlySnapshots)}
+    </div>
+  `;
+}
+
+function renderCashResults(r) {
+  const f = r.formatted;
+  return `
+    <div class="results-grid">
+      <div class="result-section">
+        <h4>Cash to Purchase</h4>
+        <div class="result-row"><span>Purchase Price</span><span class="result-val">${f.purchasePrice}</span></div>
+        <div class="result-row"><span>Cash Closing Costs</span><span class="result-val">${f.cashClosingCosts}</span></div>
+        <div class="result-row result-total"><span>Total Cash Needed</span><span class="result-val">${f.totalCashToPurchase}</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>Monthly Ownership Cost (no mortgage)</h4>
+        <div class="result-row"><span>Property Tax</span><span class="result-val">${f.monthlyPropertyTax}</span></div>
+        <div class="result-row"><span>Insurance</span><span class="result-val">${f.monthlyInsurance}</span></div>
+        ${r.monthlyHOA > 0 ? `<div class="result-row"><span>HOA</span><span class="result-val">${f.monthlyHOA}</span></div>` : ''}
+        <div class="result-row"><span>Maintenance</span><span class="result-val">${f.monthlyMaintenance}</span></div>
+        ${r.monthlyUtilities > 0 ? `<div class="result-row"><span>Utilities</span><span class="result-val">${f.monthlyUtilities}</span></div>` : ''}
+        <div class="result-row result-highlight"><span>Total Monthly</span><span class="result-val">${f.monthlyOwnershipCost}</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>Property Tax Detail</h4>
+        <div class="result-row"><span>Assessed Value</span><span class="result-val">${fmt(r.assessedValue)}</span></div>
+        <div class="result-row"><span>Annual Property Tax</span><span class="result-val">${f.annualPropertyTax}</span></div>
+        <div class="result-row"><span>Annual Insurance</span><span class="result-val">${f.annualInsurance}</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>${r.years}-Year Outlook</h4>
+        <div class="result-row"><span>Home Value at End (${r.appreciation}%/yr)</span><span class="result-val">${f.homeValueAtEnd}</span></div>
+        <div class="result-row"><span>Equity Gain (appreciation)</span><span class="result-val">${f.equityGain}</span></div>
+        <div class="result-row"><span>Ongoing Costs (${r.years}yr)</span><span class="result-val">${f.totalOngoing}</span></div>
+        <div class="result-row"><span>Opportunity Cost of Capital</span><span class="result-val">${f.opportunityCost}</span></div>
+        <div class="result-row result-highlight"><span>Net Cost After Equity</span><span class="result-val">${f.netCostAfterEquity}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRentalResults(r) {
+  const f = r.formatted;
+  const rows = r.rentByYear.map(y =>
+    `<div class="result-row"><span>Year ${y.year}</span><span class="result-val">${fmt(y.monthlyRent)}/mo · ${fmt(y.annualRent)}/yr</span></div>`
+  ).join('');
+  return `
+    <div class="results-grid">
+      <div class="result-section">
+        <h4>Monthly Rental Cost</h4>
+        <div class="result-row"><span>Rent</span><span class="result-val">${f.monthlyRent}</span></div>
+        <div class="result-row"><span>Renter's Insurance</span><span class="result-val">${f.rentersInsurance}</span></div>
+        ${r.monthlyUtilities > 0 ? `<div class="result-row"><span>Utilities</span><span class="result-val">${f.monthlyUtilities}</span></div>` : ''}
+        <div class="result-row result-highlight"><span>Total Monthly</span><span class="result-val">${f.monthlyTotal}</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>${r.years}-Year Totals</h4>
+        <div class="result-row"><span>Total Rent</span><span class="result-val">${f.totalRent}</span></div>
+        <div class="result-row"><span>Total Renter's Insurance</span><span class="result-val">${f.totalRentersIns}</span></div>
+        ${r.totalUtilities > 0 ? `<div class="result-row"><span>Total Utilities</span><span class="result-val">${f.totalUtilities}</span></div>` : ''}
+        <div class="result-row"><span>Security Deposit (refundable)</span><span class="result-val">${f.securityDeposit}</span></div>
+        <div class="result-row result-total"><span>Total Cost of Renting</span><span class="result-val">${f.totalCost}</span></div>
+        <div class="result-row"><span>Avg Monthly (over ${r.years}yr)</span><span class="result-val">${f.avgMonthly}</span></div>
+        <div class="result-row result-highlight"><span>Equity Built</span><span class="result-val">$0</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>Rent by Year (${r.annualRentIncrease}%/yr increase)</h4>
+        ${rows}
+      </div>
     </div>
   `;
 }

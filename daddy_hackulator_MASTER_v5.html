@@ -26107,6 +26107,168 @@ function calculateRentVsBuy(params = {}) {
 }
 
 // ============================================================
+//  2a. calculateCashPurchase  (outright, no loan)
+// ============================================================
+
+function calculateCashPurchase(params = {}) {
+  // Reuse the mortgage engine for tax / insurance / utilities / assessed
+  // value, then strip out everything loan-related.
+  const m = calculateMortgage(params);
+
+  const purchasePrice    = m.purchasePrice;
+  const appreciation     = n(params.annualAppreciation, 3);
+  const investmentReturn = n(params.investmentReturn, 7);
+  const maintenancePct   = n(params.maintenancePct, 1);
+  const years            = n(params.yearsToAnalyze, 10);
+
+  const sellerCredits     = n(params.sellerCredits);
+  const closingCostCredit = n(params.closingCostCredit);
+
+  // Cash closing = non-loan settlement items only (no origination,
+  // underwriting, application, points, or lender appraisal).
+  const cashClosingCosts = n(params.titleInsurance)
+    + n(params.recordingFee, 125)
+    + n(params.transferTax)
+    + n(params.inspectionFee, 400);
+
+  const totalCashToPurchase = Math.max(0,
+    purchasePrice + cashClosingCosts - sellerCredits - closingCostCredit);
+
+  // Monthly ownership cost (no P&I, no PMI)
+  const monthlyPropertyTax = m.annualPropertyTax / 12;
+  const monthlyInsurance   = m.annualInsurance / 12;
+  const monthlyHOA         = m.monthlyHOA || 0;
+  const monthlyUtilities   = m.totalMonthlyUtilities || 0;
+  const monthlyMaintenance = (purchasePrice * (maintenancePct / 100)) / 12;
+  const monthlyOwnershipCost = monthlyPropertyTax + monthlyInsurance
+    + monthlyHOA + monthlyUtilities + monthlyMaintenance;
+
+  // Horizon totals (maintenance grows with home value)
+  let totalOngoing = 0, totalMaintenance = 0, totalPropertyTax = 0;
+  let currentValue = purchasePrice;
+  for (let y = 1; y <= years; y++) {
+    const maint = currentValue * (maintenancePct / 100);
+    totalPropertyTax += m.annualPropertyTax;
+    totalMaintenance += maint;
+    totalOngoing += m.annualPropertyTax + m.annualInsurance
+      + monthlyHOA * 12 + m.annualUtilities + maint;
+    currentValue *= (1 + appreciation / 100);
+  }
+
+  const homeValueAtEnd = purchasePrice * Math.pow(1 + appreciation / 100, years);
+  const equityGain = homeValueAtEnd - purchasePrice;
+
+  // Opportunity cost: all cash invested instead of tied up in the home
+  const capitalInvested = totalCashToPurchase * Math.pow(1 + investmentReturn / 100, years);
+  const opportunityCost = capitalInvested - totalCashToPurchase;
+
+  const totalCostOfOwnership = totalCashToPurchase + totalOngoing;
+  const netCostAfterEquity = totalCashToPurchase + totalOngoing + opportunityCost - homeValueAtEnd;
+
+  return {
+    type: 'cash',
+    label: 'Cash Purchase',
+    purchasePrice,
+    cashClosingCosts,
+    totalCashToPurchase,
+    assessedValue: m.assessedValue,
+    annualPropertyTax: m.annualPropertyTax,
+    annualInsurance: m.annualInsurance,
+    monthlyPropertyTax, monthlyInsurance, monthlyHOA, monthlyUtilities,
+    monthlyMaintenance, monthlyOwnershipCost,
+    loanAmount: 0, monthlyPI: 0, totalInterest: 0, monthlyPMI: 0,
+    totalMonthly: monthlyOwnershipCost,
+    totalMonthlyHousingCost: monthlyOwnershipCost,
+    years, appreciation,
+    homeValueAtEnd, equityGain,
+    opportunityCost, capitalInvested,
+    totalOngoing, totalMaintenance, totalPropertyTax,
+    totalCostOfOwnership, netCostAfterEquity,
+    formatted: {
+      purchasePrice:        fmt(purchasePrice),
+      cashClosingCosts:     fmt(cashClosingCosts),
+      totalCashToPurchase:  fmt(totalCashToPurchase),
+      monthlyPropertyTax:   fmt(monthlyPropertyTax),
+      monthlyInsurance:     fmt(monthlyInsurance),
+      monthlyHOA:           fmt(monthlyHOA),
+      monthlyUtilities:     fmt(monthlyUtilities),
+      monthlyMaintenance:   fmt(monthlyMaintenance),
+      monthlyOwnershipCost: fmt(monthlyOwnershipCost),
+      annualPropertyTax:    fmt(m.annualPropertyTax),
+      annualInsurance:      fmt(m.annualInsurance),
+      homeValueAtEnd:       fmt(homeValueAtEnd),
+      equityGain:           fmt(equityGain),
+      opportunityCost:      fmt(opportunityCost),
+      totalOngoing:         fmt(totalOngoing),
+      totalCostOfOwnership: fmt(totalCostOfOwnership),
+      netCostAfterEquity:   fmt(netCostAfterEquity),
+    },
+  };
+}
+
+// ============================================================
+//  2c. calculateRentalOnly  (pure renting, no ownership)
+// ============================================================
+
+function calculateRentalOnly(params = {}) {
+  const monthlyRent        = n(params.monthlyRent, 1800);
+  const annualRentIncrease = n(params.annualRentIncrease, 3);
+  const rentersInsurance   = n(params.rentersInsurance, 25); // monthly
+  const securityDeposit    = n(params.securityDeposit);
+  const monthlyUtilities   = n(params.monthlyUtilities);
+  const years              = n(params.yearsToAnalyze, 3);
+
+  let totalRent = 0, totalRentersIns = 0, totalUtilities = 0;
+  let currentRent = monthlyRent;
+  const rentByYear = [];
+  for (let y = 1; y <= years; y++) {
+    const annualRent = currentRent * 12;
+    const annualIns  = rentersInsurance * 12;
+    const annualUtil = monthlyUtilities * 12;
+    totalRent += annualRent;
+    totalRentersIns += annualIns;
+    totalUtilities += annualUtil;
+    rentByYear.push({
+      year: y,
+      monthlyRent: Math.round(currentRent * 100) / 100,
+      annualRent: Math.round(annualRent * 100) / 100,
+      cumulative: Math.round((totalRent + totalRentersIns + totalUtilities) * 100) / 100,
+    });
+    currentRent *= (1 + annualRentIncrease / 100);
+  }
+
+  const monthlyTotal = monthlyRent + rentersInsurance + monthlyUtilities;
+  const totalCost = totalRent + totalRentersIns + totalUtilities;
+  const avgMonthly = years > 0 ? totalCost / (years * 12) : monthlyTotal;
+
+  return {
+    type: 'rental',
+    label: 'Rental',
+    monthlyRent, annualRentIncrease, rentersInsurance,
+    securityDeposit, monthlyUtilities, years,
+    monthlyTotal,
+    totalMonthly: monthlyTotal,
+    totalMonthlyHousingCost: monthlyTotal,
+    totalRent, totalRentersIns, totalUtilities,
+    totalCost, avgMonthly,
+    rentByYear,
+    equityAtEnd: 0, // renting builds no equity
+    formatted: {
+      monthlyRent:      fmt(monthlyRent),
+      rentersInsurance: fmt(rentersInsurance),
+      monthlyUtilities: fmt(monthlyUtilities),
+      securityDeposit:  fmt(securityDeposit),
+      monthlyTotal:     fmt(monthlyTotal),
+      totalRent:        fmt(totalRent),
+      totalRentersIns:  fmt(totalRentersIns),
+      totalUtilities:   fmt(totalUtilities),
+      totalCost:        fmt(totalCost),
+      avgMonthly:       fmt(avgMonthly),
+    },
+  };
+}
+
+// ============================================================
 //  2b. calculateLeaseToOwn  (rent-to-own / lease-purchase)
 //  Two-stage scenario: lease period → conversion to mortgage
 // ============================================================
@@ -27207,6 +27369,8 @@ function crossDomainComparison(housingResults, vehicleResults, grossMonthlyIncom
     const hMonthly = h.type === 'mortgage' ? (h.totalMonthly || 0) :
                      h.type === 'arm' ? ((h.initialPayment || 0) + (h.baseMortgage?.monthlyPropertyTax || 0) +
                        (h.baseMortgage?.monthlyInsurance || 0)) :
+                     h.type === 'cash' ? (h.totalMonthly || 0) :
+                     h.type === 'rental' ? (h.totalMonthly || 0) :
                      h.type === 'leasetoown' ? (h.totalMonthlyRent || 0) :
                      h.type === 'refinance' ? (h.newMonthlyPI || 0) : 0;
     const hLabel = h.label || 'Property';
@@ -28009,6 +28173,8 @@ function toggleConditionalSections(card, dealType) {
     'lto-fields': dealType === 'leasetoown',
     'rvb-fields': dealType === 'rentvsbuy',
     'refi-fields': dealType === 'refinance',
+    'cash-fields': dealType === 'cash',
+    'rental-fields': dealType === 'rentalonly',
   };
   for (const [cls, show] of Object.entries(sections)) {
     const el = card.querySelector(`.${cls}`);
@@ -28535,8 +28701,28 @@ function calculateProperty(card, id) {
 
   switch (dealType) {
     case 'mortgage':
-    case 'cash':
       result = calculateMortgage(commonParams);
+      break;
+
+    case 'cash':
+      result = calculateCashPurchase({
+        ...commonParams,
+        annualAppreciation: gfv('.cashAppreciation', 3),
+        investmentReturn:   gfv('.cashInvestmentReturn', 7),
+        maintenancePct:     gfv('.cashMaintenancePct', 1),
+        yearsToAnalyze:     gfv('.cashYearsToAnalyze', 10),
+      });
+      break;
+
+    case 'rentalonly':
+      result = calculateRentalOnly({
+        monthlyRent:        gfv('.roMonthlyRent', 1800),
+        annualRentIncrease: gfv('.roAnnualRentIncrease', 3),
+        rentersInsurance:   gfv('.roRentersInsurance', 25),
+        securityDeposit:    gfv('.roSecurityDeposit'),
+        monthlyUtilities:   gfv('.roMonthlyUtilities'),
+        yearsToAnalyze:     gfv('.roYearsToAnalyze', 3),
+      });
       break;
 
     case 'arm':
@@ -28800,6 +28986,10 @@ function renderHousingResults(card, result) {
     html = renderMortgageResults(result);
   } else if (result.type === 'arm') {
     html = renderARMResults(result);
+  } else if (result.type === 'cash') {
+    html = renderCashResults(result);
+  } else if (result.type === 'rental') {
+    html = renderRentalResults(result);
   } else if (result.type === 'leasetoown') {
     html = renderLeaseToOwnResults(result);
   } else if (result.type === 'rentvsbuy') {
@@ -28887,6 +29077,80 @@ function renderMortgageResults(r) {
       ${renderCostAnatomy(r)}
       ${renderDealAssessment(assessDealQuality(r))}
       ${renderAmortizationTable(r.amortization, r.yearlySnapshots)}
+    </div>
+  `;
+}
+
+function renderCashResults(r) {
+  const f = r.formatted;
+  return `
+    <div class="results-grid">
+      <div class="result-section">
+        <h4>Cash to Purchase</h4>
+        <div class="result-row"><span>Purchase Price</span><span class="result-val">${f.purchasePrice}</span></div>
+        <div class="result-row"><span>Cash Closing Costs</span><span class="result-val">${f.cashClosingCosts}</span></div>
+        <div class="result-row result-total"><span>Total Cash Needed</span><span class="result-val">${f.totalCashToPurchase}</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>Monthly Ownership Cost (no mortgage)</h4>
+        <div class="result-row"><span>Property Tax</span><span class="result-val">${f.monthlyPropertyTax}</span></div>
+        <div class="result-row"><span>Insurance</span><span class="result-val">${f.monthlyInsurance}</span></div>
+        ${r.monthlyHOA > 0 ? `<div class="result-row"><span>HOA</span><span class="result-val">${f.monthlyHOA}</span></div>` : ''}
+        <div class="result-row"><span>Maintenance</span><span class="result-val">${f.monthlyMaintenance}</span></div>
+        ${r.monthlyUtilities > 0 ? `<div class="result-row"><span>Utilities</span><span class="result-val">${f.monthlyUtilities}</span></div>` : ''}
+        <div class="result-row result-highlight"><span>Total Monthly</span><span class="result-val">${f.monthlyOwnershipCost}</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>Property Tax Detail</h4>
+        <div class="result-row"><span>Assessed Value</span><span class="result-val">${fmt(r.assessedValue)}</span></div>
+        <div class="result-row"><span>Annual Property Tax</span><span class="result-val">${f.annualPropertyTax}</span></div>
+        <div class="result-row"><span>Annual Insurance</span><span class="result-val">${f.annualInsurance}</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>${r.years}-Year Outlook</h4>
+        <div class="result-row"><span>Home Value at End (${r.appreciation}%/yr)</span><span class="result-val">${f.homeValueAtEnd}</span></div>
+        <div class="result-row"><span>Equity Gain (appreciation)</span><span class="result-val">${f.equityGain}</span></div>
+        <div class="result-row"><span>Ongoing Costs (${r.years}yr)</span><span class="result-val">${f.totalOngoing}</span></div>
+        <div class="result-row"><span>Opportunity Cost of Capital</span><span class="result-val">${f.opportunityCost}</span></div>
+        <div class="result-row result-highlight"><span>Net Cost After Equity</span><span class="result-val">${f.netCostAfterEquity}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRentalResults(r) {
+  const f = r.formatted;
+  const rows = r.rentByYear.map(y =>
+    `<div class="result-row"><span>Year ${y.year}</span><span class="result-val">${fmt(y.monthlyRent)}/mo · ${fmt(y.annualRent)}/yr</span></div>`
+  ).join('');
+  return `
+    <div class="results-grid">
+      <div class="result-section">
+        <h4>Monthly Rental Cost</h4>
+        <div class="result-row"><span>Rent</span><span class="result-val">${f.monthlyRent}</span></div>
+        <div class="result-row"><span>Renter's Insurance</span><span class="result-val">${f.rentersInsurance}</span></div>
+        ${r.monthlyUtilities > 0 ? `<div class="result-row"><span>Utilities</span><span class="result-val">${f.monthlyUtilities}</span></div>` : ''}
+        <div class="result-row result-highlight"><span>Total Monthly</span><span class="result-val">${f.monthlyTotal}</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>${r.years}-Year Totals</h4>
+        <div class="result-row"><span>Total Rent</span><span class="result-val">${f.totalRent}</span></div>
+        <div class="result-row"><span>Total Renter's Insurance</span><span class="result-val">${f.totalRentersIns}</span></div>
+        ${r.totalUtilities > 0 ? `<div class="result-row"><span>Total Utilities</span><span class="result-val">${f.totalUtilities}</span></div>` : ''}
+        <div class="result-row"><span>Security Deposit (refundable)</span><span class="result-val">${f.securityDeposit}</span></div>
+        <div class="result-row result-total"><span>Total Cost of Renting</span><span class="result-val">${f.totalCost}</span></div>
+        <div class="result-row"><span>Avg Monthly (over ${r.years}yr)</span><span class="result-val">${f.avgMonthly}</span></div>
+        <div class="result-row result-highlight"><span>Equity Built</span><span class="result-val">$0</span></div>
+      </div>
+
+      <div class="result-section">
+        <h4>Rent by Year (${r.annualRentIncrease}%/yr increase)</h4>
+        ${rows}
+      </div>
     </div>
   `;
 }
@@ -29932,6 +30196,7 @@ function runCombinedAnalysis() {
     let monthly = 0;
     if (r.type === 'mortgage' || r.type === 'arm') monthly = r.totalMonthly || 0;
     else if (r.type === 'refinance') monthly = r.newMonthlyPI || 0;
+    else if (r.type === 'cash' || r.type === 'rental') monthly = r.totalMonthly || 0;
     else if (r.type === 'rentvsbuy') monthly = r.totalMonthly || 0;
     else if (r.type === 'leasetoown') monthly = r.monthlyPayment || 0;
     housingResults.push({
@@ -30266,10 +30531,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         <select class="dealType">
                             <option value="mortgage">Purchase (Mortgage)</option>
                             <option value="arm">ARM (Adjustable Rate)</option>
+                            <option value="cash">Cash Purchase (Outright)</option>
                             <option value="leasetoown">Lease-to-Own</option>
+                            <option value="rentalonly">Rental (Rent Only)</option>
                             <option value="rentvsbuy">Rent vs. Buy Analysis</option>
                             <option value="refinance">Refinance</option>
-                            <option value="cash">Cash Purchase</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -30375,6 +30641,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Maintenance Cost % (of value/yr)</label><input type="number" class="maintenancePct" value="1" step="0.25"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── CASH PURCHASE FIELDS (conditional) ─────────── -->
+            <div class="form-section cash-fields hidden">
+                <h3 class="section-title">&#128181; Cash Purchase (Outright)</h3>
+                <p style="font-size:0.72rem;color:var(--text-muted,#6b7280);margin:0 0 8px 0;">No loan — the full price is paid at closing. Models cash outlay, ongoing ownership costs, the opportunity cost of tying up capital, and net cost after appreciation. Loan/PMI inputs are ignored in this mode.</p>
+                <div class="form-row">
+                    <div class="form-group"><label>Home Appreciation %/yr</label><input type="number" class="cashAppreciation" value="3" step="0.5"/></div>
+                    <div class="form-group"><label>Alt. Investment Return %/yr</label><input type="number" class="cashInvestmentReturn" value="7" step="0.5"/></div>
+                    <div class="form-group"><label>Maintenance % (of value/yr)</label><input type="number" class="cashMaintenancePct" value="1" step="0.25"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Years to Analyze</label>
+                        <select class="cashYearsToAnalyze"><option value="5">5 years</option><option value="7">7 years</option><option value="10" selected>10 years</option><option value="15">15 years</option><option value="20">20 years</option><option value="30">30 years</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── RENTAL-ONLY FIELDS (conditional) ─────────── -->
+            <div class="form-section rental-fields hidden">
+                <h3 class="section-title">&#128273; Rental (Rent Only)</h3>
+                <p style="font-size:0.72rem;color:var(--text-muted,#6b7280);margin:0 0 8px 0;">Pure renting — no purchase, no equity. Models total rent over the horizon with annual increases, renter's insurance, utilities, and the (refundable) security deposit.</p>
+                <div class="form-row">
+                    <div class="form-group"><label>Monthly Rent</label><input type="text" class="roMonthlyRent" placeholder="$1,800"/></div>
+                    <div class="form-group"><label>Annual Rent Increase %</label><input type="number" class="roAnnualRentIncrease" value="3" step="0.5"/></div>
+                    <div class="form-group"><label>Renter's Insurance (monthly)</label><input type="text" class="roRentersInsurance" placeholder="$25"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Security Deposit</label><input type="text" class="roSecurityDeposit" placeholder="$1,800"/></div>
+                    <div class="form-group"><label>Monthly Utilities (renter)</label><input type="text" class="roMonthlyUtilities" placeholder="$150"/></div>
+                    <div class="form-group">
+                        <label>Years to Analyze</label>
+                        <select class="roYearsToAnalyze"><option value="1">1 year</option><option value="2">2 years</option><option value="3" selected>3 years</option><option value="5">5 years</option><option value="10">10 years</option></select>
+                    </div>
                 </div>
             </div>
 

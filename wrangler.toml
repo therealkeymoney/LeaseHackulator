@@ -1,0 +1,11 @@
+# Cloudflare Worker config for the RentCast property/listing proxy.
+# Deploy:  npx wrangler login  →  npx wrangler secret put RENTCAST_API_KEY  →  npm run deploy
+# The incentive proxy deploys the same way — see `npm run deploy:incentives`.
+
+name = "property-proxy"
+main = "propertyproxyworker.js"
+compatibility_date = "2024-09-23"
+
+# RENTCAST_API_KEY is a SECRET — never hardcode it here. Set it with:
+#   npx wrangler secret put RENTCAST_API_KEY
+# (get a free key at https://app.rentcast.io/app/api — 50 lookups/mo, no card)

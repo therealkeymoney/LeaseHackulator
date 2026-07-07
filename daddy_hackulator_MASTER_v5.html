@@ -17960,14 +17960,23 @@ body.dark-theme {
       <div class="breakdown-detail"><strong>Total Cost / Selling Price</strong><span class="bd-value" data-field="costVsSelling">--</span></div>
       <div class="breakdown-detail"><strong>Total Cost / Cap Cost</strong><span class="bd-value" data-field="costVsCap">--</span></div>
       <h4 style="color: var(--secondary); margin: 8px 0 4px 0; font-size: 0.85rem;">Component Share of Total Cost to Own</h4>
-      <!-- Each row below shows what percentage of TCO a given cost component
-           represents. Helpful for understanding deal structure: how much is
-           paid upfront/monthly vs at buyout, and how much equity you're
-           committing beyond the visible deal cost. -->
-      <div class="breakdown-detail"><strong>All-In Cash Outlay / TCO</strong><span class="bd-value" data-field="ratioAllInVsTco">--</span></div>
-      <div class="breakdown-detail"><strong>Upfront + Payments / TCO</strong><span class="bd-value" data-field="ratioUpfrontPaymentsVsTco">--</span></div>
-      <div class="breakdown-detail"><strong>Effective Buyout / TCO</strong><span class="bd-value" data-field="ratioEffBuyoutVsTco">--</span></div>
-      <div class="breakdown-detail"><strong>Buyout (Residual) / TCO</strong><span class="bd-value" data-field="ratioResidualVsTco">--</span></div>
+      <!-- Genuine additive components of TCO. TCO = Due at Signing + Total
+           Payments + Effective Buyout − Check-Back Rebate − Excess Refund,
+           so these shares sum to 100% (credit rows, when present, show as a
+           negative share). No single component can exceed 100% in a normal
+           deal. -->
+      <div class="breakdown-detail"><strong>Due at Signing / TCO</strong><span class="bd-value" data-field="shareDasVsTco">--</span></div>
+      <div class="breakdown-detail"><strong>Total Payments / TCO</strong><span class="bd-value" data-field="sharePaymentsVsTco">--</span></div>
+      <div class="breakdown-detail"><strong>Effective Buyout / TCO</strong><span class="bd-value" data-field="shareBuyoutVsTco">--</span></div>
+      <div class="breakdown-detail checkback-share-row" style="display:none;"><strong>Check-Back Rebate / TCO</strong><span class="bd-value" data-field="shareCheckBackVsTco">--</span></div>
+      <div class="breakdown-detail refund-share-row" style="display:none;"><strong>Excess Equity Refund / TCO</strong><span class="bd-value" data-field="shareRefundVsTco">--</span></div>
+      <h4 style="color: var(--secondary); margin: 8px 0 4px 0; font-size: 0.85rem;">Reference Ratios (× TCO)</h4>
+      <!-- These figures are NOT components of TCO — All-In Cash Outlay adds the
+           equity you commit, and the Gross Residual ignores equity routing — so
+           they are shown as a MULTIPLE of TCO, not a share. A multiple can
+           exceed 1× (that's expected); a share cannot exceed 100%. -->
+      <div class="breakdown-detail"><strong>All-In Cash Outlay ÷ TCO</strong><span class="bd-value" data-field="ratioAllInVsTco">--</span></div>
+      <div class="breakdown-detail"><strong>Gross Residual ÷ TCO</strong><span class="bd-value" data-field="ratioResidualVsTco">--</span></div>
     </div>
     <!-- FINANCE BREAKDOWN -->
     <div class="section finance-breakdown-section hidden">
@@ -21311,53 +21320,58 @@ body.dark-theme {
             );
           }
 
-          // ─── Component-share-of-TCO ratios ──────────────────────────────
-          // These show what fraction of the total cost each component
-          // represents. Useful for understanding the deal's cost structure:
-          //   • All-In Cash Outlay  → TCO + committed equity (trade/down)
-          //     Will be >100% when there's equity committed beyond the deal.
-          //   • Upfront + Payments  → cash flow BEFORE end-of-lease decision
-          //   • Effective Buyout    → end-of-lease residual minus any equity
-          //     applied at buyout. The portion of TCO still owed at lease end.
-          //   • Buyout (Residual)   → raw residual before equity reduction.
-          //     Shows the "hypothetical buyout if no equity were applied."
+          // ─── Component-share-of-TCO + reference ratios ─────────────────
+          // TCO = Due at Signing + Total Payments + Effective Buyout
+          //       − Check-Back Rebate − Excess Equity Refund.
+          // Those are genuine components, so each is a true SHARE of TCO that
+          // sums to 100% (the two credit rows appear as negative shares when
+          // present). Figures that are NOT components of TCO — All-In Cash
+          // Outlay (adds committed equity) and the Gross Residual (ignores
+          // equity routing) — are shown as a MULTIPLE of TCO (×), never a
+          // share, since they can legitimately exceed 1× TCO.
           if (tco > 0) {
-            var upfrontPayments = (result.signingPlusPayments != null
-              ? result.signingPlusPayments
-              : (leaseSrc.signingPlusPayments || 0)) || 0;
+            var dasShare = leaseSrc.totalDueAtSigning != null
+              ? leaseSrc.totalDueAtSigning
+              : (result.totalDueAtSigning || 0);
+            var paysShare = totalPaymentsForDisplay || 0;
+            // The buyout that is actually part of TCO = residual minus only the
+            // equity routed to buyout (at-buyout / split-50/50), NOT all equity.
+            var effBuyInTco = (leaseSrc.effectiveBuyoutCost != null)
+              ? leaseSrc.effectiveBuyoutCost
+              : Math.max(0, (leaseSrc.residualValue || 0) - (leaseSrc.equityAtBuyout || 0));
+            var cbRebate = leaseSrc.checkBackRebate || 0;
+            var exRefund = leaseSrc.excessEquityRefund || 0;
             var rawResidual = (leaseSrc.residualValue || 0);
 
-            // All-In / TCO
-            var pctAllIn = (allInCashOutlay / tco) * 100;
-            setDF(
-              "ratioAllInVsTco",
-              fmt(allInCashOutlay) + " / " + fmt(tco) + " = " + pctAllIn.toFixed(1) + "%"
-                + " (+" + fmt(allInCashOutlay - tco) + " committed equity)"
-            );
+            var shareRow = function (field, num) {
+              setDF(field, fmt(num) + " / " + fmt(tco) + " = " + ((num / tco) * 100).toFixed(1) + "%");
+            };
+            shareRow("shareDasVsTco", dasShare);
+            shareRow("sharePaymentsVsTco", paysShare);
+            shareRow("shareBuyoutVsTco", effBuyInTco);
 
-            // Upfront + Payments / TCO
-            var pctUP = (upfrontPayments / tco) * 100;
-            setDF(
-              "ratioUpfrontPaymentsVsTco",
-              fmt(upfrontPayments) + " / " + fmt(tco) + " = " + pctUP.toFixed(1) + "%"
-                + " (paid before buyout)"
-            );
+            // Credit components — negative shares, shown only when they apply
+            var cbRow = card.querySelector('.checkback-share-row');
+            if (cbRebate > 0) {
+              if (cbRow) cbRow.style.display = '';
+              setDF("shareCheckBackVsTco",
+                "−" + fmt(cbRebate) + " / " + fmt(tco) + " = −" + ((cbRebate / tco) * 100).toFixed(1) + "%");
+            } else if (cbRow) { cbRow.style.display = 'none'; }
 
-            // Effective Buyout / TCO (includes equity-at-buyout reduction)
-            var pctEff = (effectiveBuyout / tco) * 100;
-            setDF(
-              "ratioEffBuyoutVsTco",
-              fmt(effectiveBuyout) + " / " + fmt(tco) + " = " + pctEff.toFixed(1) + "%"
-                + " (residual − applied equity)"
-            );
+            var rfRow = card.querySelector('.refund-share-row');
+            if (exRefund > 0) {
+              if (rfRow) rfRow.style.display = '';
+              setDF("shareRefundVsTco",
+                "−" + fmt(exRefund) + " / " + fmt(tco) + " = −" + ((exRefund / tco) * 100).toFixed(1) + "%");
+            } else if (rfRow) { rfRow.style.display = 'none'; }
 
-            // Buyout (Residual) / TCO — raw residual, no equity adjustment
-            var pctRes = (rawResidual / tco) * 100;
-            setDF(
-              "ratioResidualVsTco",
-              fmt(rawResidual) + " / " + fmt(tco) + " = " + pctRes.toFixed(1) + "%"
-                + " (full residual, ignores equity routing)"
-            );
+            // Reference multiples (NOT shares — a multiple can exceed 1× TCO)
+            setDF("ratioAllInVsTco",
+              fmt(allInCashOutlay) + " = " + (allInCashOutlay / tco).toFixed(2) + "× TCO"
+                + " (+" + fmt(allInCashOutlay - tco) + " committed equity)");
+            setDF("ratioResidualVsTco",
+              fmt(rawResidual) + " = " + (rawResidual / tco).toFixed(2) + "× TCO"
+                + " (before equity routing)");
           }
 
           // Interest Savings section

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>daddy's Ultimate Vehicle Hackulator - Modular Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="styles/styles.css">
+</head>
+
+<body>
+<div class="container">
+        <h1>daddy's Ultimate Vehicle Hackulator</h1>
+        <p>Precision Lease & Finance Analytics | Multi-Scenario Comparison Engine</p>
+
+        <!-- ACTION BAR -->
+        <div id="actionBar" class="action-bar" style="
+                  margin-top: 5px;
+                  background: var(--card-bg);
+                  padding: 5px;
+                  border-radius: 6px;
+                  border: 1px solid var(--border);">
+
+            <div class="action-Bar" id="actionBarContainer">
+                <button class="action-bar-btn active" id="btnAddVehicle">
+                    ➕ Add Vehicle ➕
+                    <span id="vehicleCount" class="vehicle-count">0</span>
+                </button>
+                <button class="action-bar-btn active" id="btnCalculateAll">🧮 Calculate All 🧮</button>
+                <button class="action-bar-btn active" id="btnMatrixAnalysis"> 📊Matrix Analysis 📊</button>
+                <button class="action-bar-btn active" id="btnRunScenario">🎯 Run Scenario 🎯</button>
+            </div>
+
+            <!-- COMPARISON SECTION -->
+            <div id="comparisonSection" class="comparison-grid" style="
+                      margin-top: 5px;
+                      background: var(--card-bg);
+                      padding: 5px;
+                      border-radius: 4px;
+                      border: 1px solid var(--border);">
+                <h2>📈 Weighted Comparison Results 📈</h2>
+
+                <div class="weight-controls" id="weightControls">
+                    <button class="weight-preset-btn active" id="btnPresetEqual"> 🟰 Equal Weight 🟰</button>
+                    <button class="weight-preset-btn active" id="btnPresetCost"> 💲 Cost Focused 💲</button>
+                    <button class="weight-preset-btn active" id="btnPresetPayment"> 💸 Payment Focused 💸</button>
+                    <button class="weight-preset-btn active" id="btnPresetBalanced"> ⚖️ Balanced ⚖️</button>
+                </div>
+
+                <table id="comparisonTableLease"></table>
+                <div id="pairwiseSection" class="table-output" style="
+                          margin-top: 5px;
+                          background: var(--card-bg);
+                          padding: 5px;
+                          border-radius: 4px;
+                          border: 1px solid var(--border);">
+                    <h3 style="color: var(--secondary); margin-bottom: 7.5px">👥 Head-to-Head Comparisons 👥</h3>
+                    <div id="pairwiseGrid" class="grid-output" style="margin-top: 7.5px"></div>
+                    <h3 style="color: var(--secondary); margin-bottom: 7.5px">
+                </div>
+            </div>
+
+            <!-- MATRIX ANALYSIS SECTION -->
+            <div id="matrixSection" class="matrix-output" style="
+                      margin-top: 15px;
+                      background: var(--card-bg);
+                      padding: 10px;
+                      border-radius: 6px;
+                      border: 1px solid var(--border);">
+                <h2 style="color: var(--secondary); margin-bottom: 7.5px">💸📊 Payment Sensitivity Matrix 📊💸</h2>
+                <div class="form-row" style="max-width: 400px; margin-bottom: 7.5px">
+                    <div class="form-group">
+                        <label>Select Vehicle for Analysis</label>
+                        <select id="matrixTargetVehicle"></select>
+                    </div>
+                </div>
+
+                <div id="matrixOutput"></div>
+            </div>
+
+            <!-- VEHICLE CARD TEMPLATE -->
+<div id="vehiclesContainer"></div>
+
+    <template id="vehicleCardTemplate"></template>
+    <div id="toast" style="display:none;"><span id="toastMessage"></span></div>
+
+    <script src="modules/config.js"></script>
+    <script src="modules/data-loader.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        fetch('templates/vehicle_card.html')
+            .then(r => r.text())
+            .then(html => {
+                document.getElementById('vehicleCardTemplate').innerHTML = html;
+                console.log('✓ Template loaded');
+            });
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 daddy\'s Ultimate Hackulator - Modular');
+            const loaded = await DataLoader.loadAll();
+            if (loaded) {
+                if (typeof initializeApp === 'function') initializeApp();
+                if (typeof addVehicle === 'function') addVehicle();
+            }
+        });
+    </script>
+</body>
+</html>

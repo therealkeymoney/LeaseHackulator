@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>daddy's Hackulator v3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="stylesheet" href="css/hackulator.css"/>
+    <link rel="stylesheet" href="css/housing.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600;700&family=Montserrat:wght@200;300;400;600;700;800&display=swap" rel="stylesheet"/>
+    <style>
+    /* ═══════════ DOMAIN TAB SWITCHER ═══════════ */
+    .domain-tabs{display:flex;justify-content:center;gap:0;margin:0 auto 20px;max-width:640px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md,0 4px 12px rgba(0,0,0,.15))}
+    .domain-tab{flex:1;padding:14px 20px;font-family:var(--font-heading);font-size:1.15rem;font-weight:700;border:none;cursor:pointer;background:var(--card-bg,#fff);color:var(--text-muted,#888);transition:all .25s ease;text-align:center;letter-spacing:.5px}
+    .domain-tab:hover{background:rgba(186,0,0,.06)}
+    .domain-tab.active{background:var(--primary,#BA0000);color:#fff}
+    .domain-tab.active:hover{background:var(--primary,#BA0000)}
+    .domain-panel{display:none}
+    .domain-panel.active{display:block}
+    /* Combined-specific */
+    .combined-hero{text-align:center;padding:30px 20px;margin-bottom:20px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:12px;color:#fff}
+    .combined-hero h2{font-family:var(--font-heading);font-size:1.8rem;margin-bottom:8px}
+    .combined-hero p{opacity:.85;font-size:.95rem}
+    .combined-action{text-align:center;margin:20px 0}
+    .combined-action .btn{font-size:1rem;padding:14px 36px}
+    #combinedOutput .cross-domain-panel{margin-top:0}
+    #combinedDomain .combined-action,
+    #combinedOutput{background:var(--card-bg,#fff);border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:var(--shadow-sm,0 2px 8px rgba(0,0,0,.08))}
+    #combinedOutput:empty{display:none}
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+<header>
+    <h1>daddy's Hackulator</h1>
+    <p class="tagline">Ultimate Vehicle &amp; Housing Calculator</p>
+</header>
+
+<div class="container">
+
+    <!-- ═══════════════════════ DOMAIN TABS ═══════════════════════ -->
+    <div class="domain-tabs">
+        <button class="domain-tab active" data-domain="vehicle">&#128663; Vehicles</button>
+        <button class="domain-tab" data-domain="housing">&#127968; Housing</button>
+        <button class="domain-tab" data-domain="combined">&#128260; Combined</button>
+    </div>
+
+    <!-- ╔═══════════════════════════════════════════════════════════════╗ -->
+    <!-- ║                    VEHICLE DOMAIN                            ║ -->
+    <!-- ╚═══════════════════════════════════════════════════════════════╝ -->
+    <div id="vehicleDomain" class="domain-panel active">
+
+        <!-- ACTION BAR -->
+        <div class="action-bar">
+            <button id="addVehicleBtn">&#10133; Add Vehicle</button>
+            <button id="vCalculateAllBtn">&#128290; Calculate All</button>
+            <button id="vCompareBtn" class="btn-secondary">&#128202; Compare</button>
+            <button id="vMatrixBtn" class="btn-secondary">&#128200; Matrix</button>
+            <button id="vExportCSVBtn" class="btn-secondary">&#128229; Export</button>
+            <button id="printBtn" class="btn-secondary">&#128424;&#65039; Print</button>
+            <button id="themeToggleBtn" class="btn-secondary">&#127769; Theme</button>
+        </div>
+
+        <!-- COMPARISON SECTION -->
+        <div id="vComparisonSection" class="comparison-section hidden">
+            <h2>&#128202; Weighted Vehicle Comparison</h2>
+            <div class="weight-controls" id="vWeightControls">
+                <button class="weight-btn active" data-preset="equal">Equal</button>
+                <button class="weight-btn" data-preset="cost">Cost Focused</button>
+                <button class="weight-btn" data-preset="payment">Payment Focused</button>
+                <button class="weight-btn" data-preset="balanced">Balanced</button>
+            </div>
+            <div id="vComparisonOutput"></div>
+            <table id="vComparisonTable">
+                <thead><tr><th>Vehicle</th><th>Monthly</th><th>Total Cost</th><th>Cost/Mile</th><th>Due at Signing</th><th>Score</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div id="vPairwiseOutput" class="hidden"></div>
+        </div>
+
+        <!-- MATRIX SECTION -->
+        <div id="vMatrixSection" class="matrix-section hidden">
+            <h2>&#128200; Payment Sensitivity Matrix</h2>
+            <div class="form-row" style="max-width:400px;margin-bottom:15px;">
+                <div class="form-group">
+                    <label>Select Vehicle</label>
+                    <select id="matrixTargetVehicle"></select>
+                </div>
+            </div>
+            <div id="vMatrixOutput"></div>
+        </div>
+
+        <!-- VEHICLES CONTAINER -->
+        <div id="vehiclesContainer"></div>
+
+    </div><!-- /vehicleDomain -->
+
+    <!-- ╔═══════════════════════════════════════════════════════════════╗ -->
+    <!-- ║                    HOUSING DOMAIN                            ║ -->
+    <!-- ╚═══════════════════════════════════════════════════════════════╝ -->
+    <div id="housingDomain" class="domain-panel">
+
+        <!-- ACTION BAR -->
+        <div class="action-bar">
+            <button id="addPropertyBtn">&#10133; Add Property</button>
+            <button id="hCalculateAllBtn">&#128290; Calculate All</button>
+            <button id="hCompareBtn" class="btn-secondary">&#128202; Compare</button>
+            <button id="hMatrixBtn" class="btn-secondary">&#128200; Matrix</button>
+            <button id="hAnalysisBtn" class="btn-secondary">&#129504; Analysis</button>
+            <button id="hExportCSVBtn" class="btn-secondary">&#128229; Export</button>
+            <button id="hPrintBtn" class="btn-secondary">&#128424;&#65039; Print</button>
+            <button id="hThemeToggleBtn" class="btn-secondary">&#127769; Theme</button>
+        </div>
+
+        <!-- COMPARISON SECTION -->
+        <div id="hComparisonSection" class="comparison-section hidden">
+            <h2>&#128202; Property Comparison &amp; Analysis</h2>
+            <div class="weight-controls" id="hWeightControls">
+                <button class="weight-btn active" data-preset="equal">Equal</button>
+                <button class="weight-btn" data-preset="cost">Cost Focused</button>
+                <button class="weight-btn" data-preset="payment">Payment Focused</button>
+                <button class="weight-btn" data-preset="balanced">Balanced</button>
+            </div>
+            <div id="overallWinnerOutput"></div>
+            <table id="hComparisonTable" class="comp-table">
+                <thead><tr><th>#</th><th>Property</th><th>Monthly</th><th>Total Cost</th><th>Cash Needed</th><th>Rate</th><th>DTI</th><th>Score</th><th>Badges</th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div id="goldenRuleOutput"></div>
+            <div id="darkHorseOutput"></div>
+            <div id="hPairwiseOutput"></div>
+            <div id="crossDomainOutput"></div>
+        </div>
+
+        <!-- MATRIX SECTION -->
+        <div id="hMatrixSection" class="matrix-section hidden">
+            <h2>&#128200; Payment Sensitivity Matrix</h2>
+            <div class="form-row" style="max-width:400px;margin-bottom:15px;">
+                <div class="form-group">
+                    <label>Select Property</label>
+                    <select id="matrixTargetProperty"></select>
+                </div>
+            </div>
+            <div id="hMatrixOutput"></div>
+        </div>
+
+        <!-- ANALYSIS SECTION -->
+        <div id="analysisSection" class="analysis-section hidden">
+            <h2>&#129504; Deep Analysis</h2>
+            <div class="analysis-nav">
+                <button class="analysis-tab-btn active" data-panel="affordability">&#128181; Affordability</button>
+                <button class="analysis-tab-btn" data-panel="waiting">&#9203; Cost of Waiting</button>
+                <button class="analysis-tab-btn" data-panel="offer">&#129309; Offer Strategy</button>
+                <button class="analysis-tab-btn" data-panel="stress">&#128293; Stress Test</button>
+                <button class="analysis-tab-btn" data-panel="crossover">&#128200; Equity Crossover</button>
+                <button class="analysis-tab-btn" data-panel="waterfall">&#127754; Budget Waterfall</button>
+            </div>
+            <div id="affordabilityPanel" class="analysis-panel active"></div>
+            <div id="waitingPanel" class="analysis-panel"></div>
+            <div id="offerPanel" class="analysis-panel"></div>
+            <div id="stressPanel" class="analysis-panel"></div>
+            <div id="crossoverPanel" class="analysis-panel"></div>
+            <div id="waterfallPanel" class="analysis-panel"></div>
+        </div>
+
+        <!-- PROPERTIES CONTAINER -->
+        <div id="propertiesContainer"></div>
+
+    </div><!-- /housingDomain -->
+
+    <!-- ╔═══════════════════════════════════════════════════════════════╗ -->
+    <!-- ║                    COMBINED DOMAIN                           ║ -->
+    <!-- ╚═══════════════════════════════════════════════════════════════╝ -->
+    <div id="combinedDomain" class="domain-panel">
+
+        <div class="combined-hero">
+            <h2>&#128260; Cross-Domain Comparison</h2>
+            <p>Pair the best vehicles with the best properties to find your optimal financial plan</p>
+        </div>
+
+        <div class="combined-action">
+            <button id="runCombinedBtn" class="btn">&#9889; Run Combined Analysis</button>
+        </div>
+
+        <div id="combinedOutput"></div>
+
+    </div><!-- /combinedDomain -->
+
+</div><!-- /.container -->
+
+<!-- ═══════════════════════════ TOAST ═══════════════════════════ -->
+<div id="toast"><span id="toastMessage"></span></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════ VEHICLE CARD TEMPLATE ═══════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<template id="vehicleCardTemplate">
+<div class="vehicle-card">
+
+    <!-- ──────────────── CARD HEADER ──────────────── -->
+    <div class="card-header">
+        <div class="card-title-wrap">
+            <h2 class="card-title">Vehicle <span class="v-num">1</span></h2>
+            <span class="credit-tier-badge hidden">Tier 1</span>
+            <span class="condition-badge hidden">New</span>
+            <span class="distance-badge hidden">-- mi</span>
+        </div>
+        <div class="card-controls">
+            <button class="btn btn-small btn-secondary" data-action="duplicate" title="Duplicate">&#128203;</button>
+            <button class="btn btn-small btn-secondary" data-action="clear" title="Clear">&#128465;&#65039;</button>
+            <button class="btn btn-small btn-secondary" data-action="remove" title="Remove">&#10060;</button>
+        </div>
+    </div>
+
+    <!-- ──────────────── TABS ──────────────── -->
+    <div class="vehicle-tabs">
+        <button class="vehicle-tab-btn active" data-tab="input">&#128290; Input</button>
+        <button class="vehicle-tab-btn" data-tab="results">&#9989; Results</button>
+        <button class="vehicle-tab-btn" data-tab="scenarios">&#127919; Scenarios</button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- ══════════════════════ TAB: INPUT ═══════════════════════════ -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="vehicle-tab-content active" data-tab="input">
+        <div class="card-body">
+
+            <!-- ─────────── VEHICLE INFORMATION ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128663; Vehicle Information</h3>
+
+                <div class="form-row">
+                    <div class="form-group grow">
+                        <label>VIN</label>
+                        <input type="text" class="vin" maxlength="17" placeholder="17-character VIN"/>
+                        <span class="field-loading"></span>
+                        <span class="field-error"></span>
+                    </div>
+                    <div class="form-group shrink">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-small" data-action="decode-vin">&#128269; Decode</button>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Year</label>
+                        <input type="number" class="year" placeholder="2025"/>
+                    </div>
+                    <div class="form-group grow">
+                        <label>Make</label>
+                        <input type="text" class="make" placeholder="Toyota"/>
+                    </div>
+                    <div class="form-group grow">
+                        <label>Model</label>
+                        <input type="text" class="model" placeholder="Camry"/>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group grow">
+                        <label>Trim</label>
+                        <input type="text" class="trim" placeholder="XSE"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Exterior Color</label>
+                        <input type="text" class="exteriorColor" placeholder=""/>
+                    </div>
+                    <div class="form-group">
+                        <label>Interior Color</label>
+                        <input type="text" class="interiorColor" placeholder=""/>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Condition</label>
+                        <select class="condition">
+                            <option value="new">New</option>
+                            <option value="cpo">CPO (Certified Pre-Owned)</option>
+                            <option value="used">Pre-Owned</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Mileage</label>
+                        <input type="number" class="listingMiles" placeholder="0"/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── DEALER INFORMATION ─────────── -->
+            <div class="form-section dealer-section">
+                <h3 class="section-title">&#127970; Dealer Information</h3>
+
+                <div class="form-row">
+                    <div class="form-group grow">
+                        <label>Dealer Name</label>
+                        <input type="text" class="dealerName" placeholder="Auto-filled from VIN lookup"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Dealer Phone</label>
+                        <input type="text" class="dealerPhone" placeholder=""/>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group grow">
+                        <label>Dealer Location</label>
+                        <input type="text" class="dealerLocation" placeholder="City, State ZIP"/>
+                    </div>
+                    <div class="form-group">
+                        <label>Stock #</label>
+                        <input type="text" class="stockNumber" placeholder=""/>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Days on Market</label>
+                        <input type="number" class="daysOnMarket" placeholder=""/>
+                    </div>
+                    <div class="form-group">
+                        <label>Source</label>
+                        <input type="text" class="listingSource" placeholder=""/>
+                    </div>
+                    <div class="form-group grow">
+                        <label>Listing URL</label>
+                        <input type="url" class="listingUrl" placeholder=""/>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── FUEL TYPE & ENERGY ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#9889; Fuel Type &amp; Energy</h3>
+
+                <div class="form-row fuel-type-row">
+                    <div class="checkbox-wrapper">
+                        <input type="radio" name="fuelType" class="fuelTypeRadio" value="gas" checked/>
+                        <label>&#9981; Gas</label>
+                    </div>
+                    <div class="checkbox-wrapper">
+                        <input type="radio" name="fuelType" class="fuelTypeRadio" value="ev"/>
+                        <label>&#128267; EV</label>
+                    </div>
+                    <div class="checkbox-wrapper">
+                        <input type="radio" name="fuelType" class="fuelTypeRadio" value="phev"/>
+                        <label>&#128268; PHEV</label>
+                    </div>
+                </div>
+
+                <!-- Gas Fields -->
+                <div class="fuel-fields gas-fields">
+                    <div class="form-row">
+                        <div class="form-group"><label>City MPG</label><input type="number" class="epaCityMpg" value="0" step="0.1"/></div>
+                        <div class="form-group"><label>Hwy MPG</label><input type="number" class="epaHwyMpg" value="0" step="0.1"/></div>
+                        <div class="form-group"><label>Combined MPG</label><input type="number" class="epaCombinedMpg" value="0" step="0.1"/></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Fuel Tank (gal)</label><input type="number" class="fuelTankSize" value="0" step="0.1"/></div>
+                        <div class="form-group"><label>Avg Gas Price ($/gal)</label><input type="number" class="avgGasPrice" value="3.25" step="0.01"/></div>
+                        <div class="form-group"><label>Est. Annual Fuel Cost</label><input type="text" class="annualFuelCost" value="$0" readonly/></div>
+                    </div>
+                </div>
+
+                <!-- EV Fields -->
+                <div class="fuel-fields ev-fields hidden">
+                    <div class="form-row">
+                        <div class="form-group"><label>City MPGe</label><input type="number" class="mpgeCity" value="0"/></div>
+                        <div class="form-group"><label>Hwy MPGe</label><input type="number" class="mpgeHwy" value="0"/></div>
+                        <div class="form-group"><label>Combined MPGe</label><input type="number" class="mpgeCombined" value="0"/></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Battery Size (kWh)</label><input type="number" class="batterySize" value="0" step="0.1"/></div>
+                        <div class="form-group"><label>Electric Range (mi)</label><input type="number" class="rangeElectric" value="0"/></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>L2 Charging ($/kWh)</label><input type="number" class="l2electricityCost" value="0.1855" step="0.0001"/></div>
+                        <div class="form-group"><label>L3 / DCFC ($/kWh)</label><input type="number" class="l3electricityCost" value="0.4555" step="0.0001"/></div>
+                        <div class="form-group"><label>Est. Annual L2 Cost</label><input type="text" class="annualChargingCostL2" value="$0" readonly/></div>
+                        <div class="form-group"><label>Est. Annual L3 Cost</label><input type="text" class="annualChargingCostL3" value="$0" readonly/></div>
+                    </div>
+                </div>
+
+                <!-- PHEV Fields -->
+                <div class="fuel-fields phev-fields hidden">
+                    <div class="form-row">
+                        <div class="form-group"><label>City MPG (Gas)</label><input type="number" class="epaCityMpg" value="0" step="0.1"/></div>
+                        <div class="form-group"><label>Hwy MPG (Gas)</label><input type="number" class="epaHwyMpg" value="0" step="0.1"/></div>
+                        <div class="form-group"><label>Combined MPG (Gas)</label><input type="number" class="epaCombinedMpg" value="0" step="0.1"/></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>City MPGe (Electric)</label><input type="number" class="mpgeCity" value="0"/></div>
+                        <div class="form-group"><label>Hwy MPGe (Electric)</label><input type="number" class="mpgeHwy" value="0"/></div>
+                        <div class="form-group"><label>Combined MPGe (Electric)</label><input type="number" class="mpgeCombined" value="0"/></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Electric Range (mi)</label><input type="number" class="phevRange" value="0"/></div>
+                        <div class="form-group"><label>% Electric Driving</label><input type="number" class="phevElectricPct" value="60" min="0" max="100"/></div>
+                        <div class="form-group"><label>Battery Size (kWh)</label><input type="number" class="batterySize" value="0" step="0.1"/></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Avg Gas Price ($/gal)</label><input type="number" class="avgGasPrice" value="3.25" step="0.01"/></div>
+                        <div class="form-group"><label>L2 Charging ($/kWh)</label><input type="number" class="l2electricityCost" value="0.1855" step="0.0001"/></div>
+                        <div class="form-group"><label>Est. Annual Energy Cost</label><input type="text" class="annualEnergyCostMixed" value="$0" readonly/></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── LOCATION & TAX ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128205; Location &amp; Tax</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>ZIP Code</label><input type="text" class="zip" maxlength="5" placeholder="30126"/></div>
+                    <div class="form-group grow"><label>City</label><input type="text" class="city" placeholder="Auto-filled" readonly/></div>
+                    <div class="form-group"><label>State</label><input type="text" class="state" placeholder="" readonly/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>County</label><input type="text" class="county" placeholder=""/></div>
+                    <div class="form-group"><label>Tax Rate (%)</label><input type="number" class="taxRate" step="0.01" value="7.00"/></div>
+                    <div class="form-group"><label>Distance to Dealer</label><input type="text" class="dealerDistance" value="--" readonly/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── PRICING ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128176; Pricing</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>MSRP</label><input type="number" class="msrp" value="0" step="1"/></div>
+                    <div class="form-group"><label>Listing Price</label><input type="number" class="listingPrice" value="0" step="1"/></div>
+                    <div class="form-group"><label>Selling Price (Negotiated)</label><input type="number" class="sellingPrice" value="0" step="1"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Discount from MSRP</label><input type="text" class="discountFromMsrp" value="$0 (0.00%)" readonly/></div>
+                    <div class="form-group"><label>Capitalized Amount</label><input type="number" class="capAmount" value="0" readonly/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Lease Incentives</label><input type="number" class="leaseIncentives" value="0"/></div>
+                    <div class="form-group"><label>Finance Incentives</label><input type="number" class="financeIncentives" value="0"/></div>
+                    <div class="form-group ev-field"><label>State EV Credit</label><input type="number" class="stateCredit" value="0"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>&nbsp;</label><button class="btn btn-small btn-secondary" data-action="fetch-incentives">&#127873; Fetch Incentives</button></div>
+                </div>
+                <div class="incentives-section hidden"><h4>Available Incentives</h4><div class="incentive-list"></div></div>
+            </div>
+
+            <!-- ─────────── DEAL TYPE & TERMS ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128203; Deal Type &amp; Terms</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Deal Type</label>
+                        <select class="dealType">
+                            <option value="lease">Closed End Lease</option>
+                            <option value="finance">Finance</option>
+                            <option value="balloon">Balloon Lease</option>
+                            <option value="balloonfinance">Balloon Finance</option>
+                            <option value="cash">Cash Purchase</option>
+                        </select>
+                    </div>
+                    <div class="form-group lease-field">
+                        <label>Lease Type</label>
+                        <select class="leaseType">
+                            <option value="closedend">Closed End</option>
+                            <option value="subvented">Subvented</option>
+                            <option value="singlepay">Single Pay</option>
+                            <option value="subventedsingle">Subvented + Single Pay</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Credit Tier</label>
+                        <select class="creditTier">
+                            <option value="1">Tier 1 (Excellent 720+)</option>
+                            <option value="2">Tier 2 (Good 680-719)</option>
+                            <option value="3">Tier 3 (Fair 640-679)</option>
+                            <option value="4">Tier 4 (Below Avg 600-639)</option>
+                            <option value="5">Tier 5 (Poor &lt;600)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Term (Months)</label>
+                        <select class="leaseTerm">
+                            <option value="24">24</option><option value="27">27</option><option value="30">30</option>
+                            <option value="33">33</option><option value="36" selected>36</option><option value="39">39</option>
+                            <option value="42">42</option><option value="48">48</option><option value="60">60</option>
+                            <option value="72">72</option><option value="84">84</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Annual Mileage</label>
+                        <select class="annualMileage">
+                            <option value="5000">5,000</option><option value="7500">7,500</option><option value="10000">10,000</option>
+                            <option value="12000" selected>12,000</option><option value="15000">15,000</option><option value="18000">18,000</option>
+                            <option value="21000">21,000</option><option value="25000">25,000</option><option value="30000">30,000</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row lease-field">
+                    <div class="form-group"><label>Residual %</label><input type="number" class="residualPct" step="0.01" value="55"/></div>
+                    <div class="form-group"><label>Residual Value ($)</label><input type="number" class="residualValue" value="0" step="1"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group lease-field"><label>Money Factor</label><input type="number" class="moneyFactor" step="0.00001" value="0.00125"/></div>
+                    <div class="form-group"><label>APR %</label><input type="number" class="apr" step="0.01" value="3.00"/></div>
+                    <div class="form-group lease-field"><label>APR/MF Sync</label><span class="mf-apr-display">MF 0.00125 = 3.00% APR</span></div>
+                </div>
+                <div class="form-row lease-field">
+                    <div class="form-group">
+                        <label>Tax Method</label>
+                        <select class="taxMethod">
+                            <option value="Monthly Payment">Monthly Payment</option>
+                            <option value="Monthly Payment + Fees">Monthly Payment + Fees</option>
+                            <option value="Monthly Depreciation">Monthly Depreciation</option>
+                            <option value="Capitalized Cost">Capitalized Cost</option>
+                            <option value="Upfront">Upfront (Full Tax at Signing)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── MSD ─────────── -->
+            <div class="form-section lease-field">
+                <h3 class="section-title">&#128274; Multiple Security Deposits (MSD)</h3>
+                <div class="form-row"><div class="checkbox-wrapper"><input type="checkbox" class="msdActive"/><label>Enable MSD Program</label></div></div>
+                <div class="msd-fields hidden">
+                    <div class="form-row">
+                        <div class="form-group"><label>Number of MSDs</label><input type="number" class="msdCount" min="1" max="10" value="7"/></div>
+                        <div class="form-group"><label>MF Reduction (per MSD)</label><input type="number" class="msdReduction" step="0.00001" value="0.00007" readonly/></div>
+                        <div class="form-group"><label>Effective MF After MSD</label><input type="text" class="effectiveMF" value="--" readonly/></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── DOWN PAYMENT & TRADE EQUITY ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128181; Down Payment &amp; Trade Equity</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Down Payment</label><input type="number" class="downPayment" value="0"/></div>
+                    <div class="form-group grow">
+                        <label>Down Payment Scenario</label>
+                        <select class="downScenario">
+                            <option value="capreduction">Cap Cost Reduction</option>
+                            <option value="split5050">Split 50/50 (Cap + Cash)</option>
+                            <option value="atbuyout">Apply at Buyout</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row"><div class="checkbox-wrapper"><input type="checkbox" class="zeroDrive"/><label>Zero Drive-Off (Capitalize All Fees)</label></div></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Trade Allowance</label><input type="number" class="tradeAllowance" value="0"/></div>
+                    <div class="form-group"><label>Payoff Amount</label><input type="number" class="payoffAmount" value="0"/></div>
+                    <div class="form-group"><label>Trade Equity</label><input type="number" class="tradeEquity" value="0" readonly/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group grow">
+                        <label>Trade Equity Scenario</label>
+                        <select class="tradeScenario">
+                            <option value="capreduction">Cap Cost Reduction</option>
+                            <option value="split5050">Split 50/50 (Cap + Cash Back)</option>
+                            <option value="atbuyout">Apply at Buyout</option>
+                            <option value="checkback">Check Back (Full Cash)</option>
+                        </select>
+                    </div>
+                    <div class="form-group check-back-field hidden"><label>Check Back Amount</label><input type="number" class="checkBackAmount" value="0" readonly/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── FEES ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#129534; Fees</h3>
+                <div class="form-row fee-cap-row">
+                    <div class="form-group"><label>Acquisition Fee</label><input type="number" class="acqFee" value="695"/></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" class="capAcquisition"/><label>Cap</label></div>
+                </div>
+                <div class="form-row fee-cap-row">
+                    <div class="form-group"><label>Dealer / Doc Fee</label><input type="number" class="docFee" value="299"/></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" class="capDealer"/><label>Cap</label></div>
+                </div>
+                <div class="form-row fee-cap-row">
+                    <div class="form-group"><label>Registration Fee</label><input type="number" class="regFee" value="0"/></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" class="capReg"/><label>Cap</label></div>
+                </div>
+                <div class="form-row fee-cap-row">
+                    <div class="form-group"><label>Title Fee</label><input type="number" class="titleFee" value="0"/></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" class="capTitle"/><label>Cap</label></div>
+                </div>
+                <div class="form-row fee-cap-row">
+                    <div class="form-group"><label>Other Fees</label><input type="number" class="otherFees" value="0"/></div>
+                    <div class="checkbox-wrapper"><input type="checkbox" class="capOther"/><label>Cap</label></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group lease-field"><label>Disposition Fee (End of Lease)</label><input type="number" class="dispFee" value="395" readonly/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Total Fees (Capped)</label><input type="text" class="totalFeesCapped" value="$0" readonly/></div>
+                    <div class="form-group"><label>Total Fees (At Signing)</label><input type="text" class="totalFeesAtSigning" value="$0" readonly/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── BALLOON STRUCTURE ─────────── -->
+            <div class="form-section balloon-fields hidden">
+                <h3 class="section-title">&#127880; Balloon Structure</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Balloon Term (months)</label><input type="number" class="balloonTerm" value="60"/></div>
+                    <div class="form-group"><label>Balloon Due at Month</label><input type="number" class="balloonMonthDue" value="36"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Additional Down at Balloon</label><input type="number" class="balloonAddDown" value="0"/></div>
+                    <div class="form-group"><label>New Term After Balloon</label><input type="number" class="balloonNewTerm" value="24"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Remaining Cap at Balloon</label><input type="number" class="balloonRemCap" value="0" readonly/></div>
+                    <div class="form-group"><label>New Payment After Balloon</label><input type="number" class="balloonNewPay" value="0" readonly/></div>
+                </div>
+            </div>
+
+        </div><!-- /.card-body -->
+    </div><!-- /TAB: INPUT -->
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- ══════════════════════ TAB: RESULTS ═════════════════════════ -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="vehicle-tab-content" data-tab="results">
+        <div class="card-body">
+
+            <!-- Interest Savings (MSD) -->
+            <div class="section interest-savings-section hidden">
+                <h3 class="section-title">&#128184; Interest Savings Analysis (MSD)</h3>
+                <div class="breakdown-detail"><strong>Base Money Factor</strong><span class="bd-value" data-field="baseMF">--</span></div>
+                <div class="breakdown-detail"><strong>Applied Discounts</strong><span class="bd-value" data-field="appliedDiscounts">--</span></div>
+                <div class="breakdown-detail"><strong>Effective Money Factor</strong><span class="bd-value" data-field="effectiveMF">--</span></div>
+                <div class="breakdown-detail"><strong>APR Equivalent</strong><span class="bd-value" data-field="aprEquiv">--</span></div>
+                <div class="breakdown-detail highlight-green"><strong>Total Interest Savings</strong><span class="bd-value" data-field="totalInterestSavings">--</span></div>
+            </div>
+
+            <!-- LEASE BREAKDOWN -->
+            <div class="section lease-breakdown-section">
+                <h3 class="section-title">&#128202; Complete Lease Breakdown</h3>
+                <h4 class="breakdown-heading">Capitalization</h4>
+                <div class="breakdown-detail"><strong>MSRP</strong><span class="bd-value" data-field="r-msrp">$0</span></div>
+                <div class="breakdown-detail"><strong>Selling Price</strong><span class="bd-value" data-field="r-sellingPrice">$0</span></div>
+                <div class="breakdown-detail"><strong>Lease Incentives</strong><span class="bd-value" data-field="r-leaseIncentives">-$0</span></div>
+                <div class="breakdown-detail"><strong>State Credit (EV/PHEV)</strong><span class="bd-value" data-field="r-stateCredit">-$0</span></div>
+                <div class="breakdown-detail"><strong>Trade Equity Applied</strong><span class="bd-value" data-field="r-tradeEquityApplied">-$0</span></div>
+                <div class="breakdown-detail"><strong>Down Payment Applied</strong><span class="bd-value" data-field="r-downApplied">-$0</span></div>
+                <div class="breakdown-detail"><strong>Capitalized Fees</strong><span class="bd-value" data-field="r-cappedFees">+$0</span></div>
+                <div class="breakdown-detail highlight-yellow"><strong>Adjusted Capitalized Cost</strong><span class="bd-value" data-field="r-adjCapCost">$0</span></div>
+
+                <h4 class="breakdown-heading">Depreciation</h4>
+                <div class="breakdown-detail"><strong>Residual Value</strong><span class="bd-value" data-field="r-residualValue">$0 (0%)</span></div>
+                <div class="breakdown-detail"><strong>Total Depreciation</strong><span class="bd-value" data-field="r-totalDep">$0</span></div>
+                <div class="breakdown-detail"><strong>Monthly Depreciation</strong><span class="bd-value" data-field="r-monthlyDep">$0</span></div>
+
+                <h4 class="breakdown-heading">Finance Charge</h4>
+                <div class="breakdown-detail"><strong>Money Factor</strong><span class="bd-value" data-field="r-moneyFactor">0.00000</span></div>
+                <div class="breakdown-detail"><strong>APR Equivalent</strong><span class="bd-value" data-field="r-aprEquiv">0.00%</span></div>
+                <div class="breakdown-detail"><strong>Monthly Rent Charge</strong><span class="bd-value" data-field="r-monthlyRent">$0</span></div>
+
+                <h4 class="breakdown-heading">Payment Structure</h4>
+                <div class="breakdown-detail"><strong>Base Monthly Payment</strong><span class="bd-value" data-field="r-basePayment">$0</span></div>
+                <div class="breakdown-detail"><strong>Monthly Tax</strong><span class="bd-value" data-field="r-monthlyTax">$0</span></div>
+                <div class="breakdown-detail highlight-green"><strong>Total Monthly Payment</strong><span class="bd-value" data-field="r-totalMonthly">$0</span></div>
+
+                <h4 class="breakdown-heading">Due at Signing</h4>
+                <div class="breakdown-detail"><strong>First Month Payment</strong><span class="bd-value" data-field="r-firstMonth">$0</span></div>
+                <div class="breakdown-detail"><strong>Drive-Off Fees</strong><span class="bd-value" data-field="r-driveOffFees">$0</span></div>
+                <div class="breakdown-detail"><strong>Down Payment (Cash)</strong><span class="bd-value" data-field="r-downCash">$0</span></div>
+                <div class="breakdown-detail"><strong>Trade Equity (Cash Back)</strong><span class="bd-value" data-field="r-tradeCash">$0</span></div>
+                <div class="breakdown-detail"><strong>MSD Deposit</strong><span class="bd-value" data-field="r-msdDeposit">$0</span></div>
+                <div class="breakdown-detail"><strong>Upfront Tax</strong><span class="bd-value" data-field="r-upfrontTax">$0</span></div>
+                <div class="breakdown-detail highlight-yellow"><strong>Total Due at Signing</strong><span class="bd-value" data-field="r-totalDueAtSigning">$0</span></div>
+
+                <h4 class="breakdown-heading">Total Spend Analysis</h4>
+                <div class="breakdown-detail"><strong>Total of All Payments</strong><span class="bd-value" data-field="r-totalPayments">$0</span></div>
+                <div class="breakdown-detail"><strong>Total Upfront + Payments</strong><span class="bd-value" data-field="r-totalUpfrontPlusPayments">$0</span></div>
+                <div class="breakdown-detail"><strong>Buyout (Residual + Disp.)</strong><span class="bd-value" data-field="r-buyout">$0</span></div>
+                <div class="breakdown-detail highlight-red"><strong>Total Cost to Own</strong><span class="bd-value" data-field="r-totalCostToOwn">$0</span></div>
+                <div class="breakdown-detail"><strong>Cost Per Mile</strong><span class="bd-value" data-field="r-costPerMile">$0.00/mi</span></div>
+
+                <h4 class="breakdown-heading">Fuel / Energy Cost</h4>
+                <div class="breakdown-detail"><strong>Monthly Fuel/Energy</strong><span class="bd-value" data-field="r-monthlyFuel">$0</span></div>
+                <div class="breakdown-detail"><strong>Annual Fuel/Energy</strong><span class="bd-value" data-field="r-annualFuel">$0</span></div>
+                <div class="breakdown-detail"><strong>Total Fuel/Energy (Over Term)</strong><span class="bd-value" data-field="r-totalFuel">$0</span></div>
+            </div>
+
+            <!-- FINANCE BREAKDOWN -->
+            <div class="section finance-breakdown-section hidden">
+                <h3 class="section-title">&#128179; Finance Breakdown</h3>
+                <h4 class="breakdown-heading">Loan Structure</h4>
+                <div class="breakdown-detail"><strong>Selling Price</strong><span class="bd-value" data-field="rf-sellingPrice">$0</span></div>
+                <div class="breakdown-detail"><strong>Sales Tax</strong><span class="bd-value" data-field="rf-salesTax">$0</span></div>
+                <div class="breakdown-detail"><strong>Total Vehicle Cost</strong><span class="bd-value" data-field="rf-totalVehicleCost">$0</span></div>
+                <div class="breakdown-detail"><strong>Down Payment</strong><span class="bd-value" data-field="rf-downPayment">-$0</span></div>
+                <div class="breakdown-detail"><strong>Trade Equity</strong><span class="bd-value" data-field="rf-tradeEquity">-$0</span></div>
+                <div class="breakdown-detail"><strong>Finance Incentives</strong><span class="bd-value" data-field="rf-finIncentives">-$0</span></div>
+                <div class="breakdown-detail highlight-yellow"><strong>Amount Financed</strong><span class="bd-value" data-field="rf-amountFinanced">$0</span></div>
+
+                <h4 class="breakdown-heading">Payment</h4>
+                <div class="breakdown-detail"><strong>APR</strong><span class="bd-value" data-field="rf-apr">0.00%</span></div>
+                <div class="breakdown-detail"><strong>Term</strong><span class="bd-value" data-field="rf-term">0 months</span></div>
+                <div class="breakdown-detail highlight-green"><strong>Monthly Payment</strong><span class="bd-value" data-field="rf-monthlyPayment">$0</span></div>
+
+                <h4 class="breakdown-heading">Cost Analysis</h4>
+                <div class="breakdown-detail"><strong>Total of Payments</strong><span class="bd-value" data-field="rf-totalPayments">$0</span></div>
+                <div class="breakdown-detail"><strong>Total Interest Paid</strong><span class="bd-value" data-field="rf-totalInterest">$0</span></div>
+                <div class="breakdown-detail highlight-red"><strong>Total Cost</strong><span class="bd-value" data-field="rf-totalCost">$0</span></div>
+                <div class="breakdown-detail"><strong>Cost Per Mile</strong><span class="bd-value" data-field="rf-costPerMile">$0.00/mi</span></div>
+            </div>
+
+            <!-- BALLOON BREAKDOWN -->
+            <div class="section balloon-breakdown-section hidden">
+                <h3 class="section-title">&#127880; Balloon Breakdown</h3>
+                <div class="breakdown-detail"><strong>Initial Monthly Payment</strong><span class="bd-value" data-field="rb-initialPayment">$0</span></div>
+                <div class="breakdown-detail"><strong>Balloon Month</strong><span class="bd-value" data-field="rb-balloonMonth">0</span></div>
+                <div class="breakdown-detail highlight-yellow"><strong>Balloon Payment Due</strong><span class="bd-value" data-field="rb-balloonPayment">$0</span></div>
+                <div class="breakdown-detail"><strong>New Monthly Payment</strong><span class="bd-value" data-field="rb-newPayment">$0</span></div>
+                <div class="breakdown-detail"><strong>New Term</strong><span class="bd-value" data-field="rb-newTerm">0 months</span></div>
+                <div class="breakdown-detail highlight-red"><strong>Total Cost</strong><span class="bd-value" data-field="rb-totalCost">$0</span></div>
+            </div>
+
+            <!-- DEAL TYPE COMPARISON -->
+            <div class="section deal-comparison-section">
+                <h3 class="section-title">&#9876;&#65039; Deal Type Comparison</h3>
+                <div class="deal-comparison-grid" id="dealComparisonGrid"></div>
+            </div>
+
+            <!-- DEAL ANATOMY -->
+            <div class="section">
+                <h3 class="section-title">&#128300; Deal Anatomy</h3>
+                <div class="deal-anatomy"></div>
+            </div>
+
+        </div><!-- /.card-body -->
+    </div><!-- /TAB: RESULTS -->
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- ══════════════════════ TAB: SCENARIOS ═══════════════════════ -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="vehicle-tab-content" data-tab="scenarios">
+        <div class="card-body">
+            <div class="form-section">
+                <h3 class="section-title">&#127919; Scenario Analysis</h3>
+                <div class="form-row">
+                    <div class="form-group grow">
+                        <label>Select Scenario</label>
+                        <select class="scenarioSelect"><option value="">Choose a Scenario...</option></select>
+                    </div>
+                </div>
+                <div class="scenario-details hidden">
+                    <h4>Scenario Details</h4>
+                    <div class="scenario-info"></div>
+                    <button class="btn" data-action="apply-scenario">Apply This Scenario</button>
+                </div>
+                <div class="scenario-results hidden">
+                    <h4>Scenario Results</h4>
+                    <div class="scenario-output"></div>
+                </div>
+            </div>
+        </div><!-- /.card-body -->
+    </div><!-- /TAB: SCENARIOS -->
+
+</div><!-- /.vehicle-card -->
+</template>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════ PROPERTY CARD TEMPLATE ═══════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<template id="propertyCardTemplate">
+<div class="vehicle-card property-card">
+
+    <!-- ──────────────── CARD HEADER ──────────────── -->
+    <div class="card-header">
+        <div class="card-title-wrap">
+            <h2 class="card-title">Property <span class="p-num">1</span></h2>
+            <span class="credit-tier-badge hidden">Tier 1</span>
+            <span class="condition-badge hidden">New</span>
+            <span class="loan-type-badge hidden">Conv</span>
+        </div>
+        <div class="card-controls">
+            <button class="btn btn-small btn-secondary" data-action="duplicate" title="Duplicate">&#128203;</button>
+            <button class="btn btn-small btn-secondary" data-action="clear" title="Clear">&#128465;&#65039;</button>
+            <button class="btn btn-small btn-secondary" data-action="remove" title="Remove">&#10060;</button>
+        </div>
+    </div>
+
+    <!-- ──────────────── TABS ──────────────── -->
+    <div class="vehicle-tabs">
+        <button class="vehicle-tab-btn active" data-tab="input">&#128290; Input</button>
+        <button class="vehicle-tab-btn" data-tab="results">&#9989; Results</button>
+        <button class="vehicle-tab-btn" data-tab="scenarios">&#127919; Scenarios</button>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- ══════════════════════ TAB: INPUT ═══════════════════════════ -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="vehicle-tab-content active" data-tab="input">
+        <div class="card-body">
+
+            <!-- ─────────── PROPERTY INFORMATION ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#127968; Property Information</h3>
+
+                <div class="form-row">
+                    <div class="form-group grow">
+                        <label>Property Address</label>
+                        <input type="text" class="propertyAddress" placeholder="123 Main St"/>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group grow"><label>City</label><input type="text" class="propCity" placeholder="Mableton"/></div>
+                    <div class="form-group">
+                        <label>State</label>
+                        <select class="propState">
+                            <option value="">--</option>
+                            <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                            <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                            <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                            <option value="GA" selected>GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                            <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                            <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                            <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                            <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                            <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                            <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                            <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                            <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                            <option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option>
+                            <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
+                            <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
+                            <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
+                            <option value="WI">WI</option><option value="WY">WY</option><option value="DC">DC</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>ZIP</label><input type="text" class="propZip" maxlength="5" placeholder="30126"/></div>
+                    <div class="form-group"><label>County</label><input type="text" class="propCounty" placeholder="Cobb"/></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Property Type</label>
+                        <select class="propertyType">
+                            <option value="single_family">Single Family</option>
+                            <option value="condo">Condo / Townhouse</option>
+                            <option value="multi_family">Multi-Family (2-4)</option>
+                            <option value="manufactured">Manufactured</option>
+                            <option value="new_construction">New Construction</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Condition</label>
+                        <select class="propCondition">
+                            <option value="excellent">Excellent</option>
+                            <option value="good">Good</option>
+                            <option value="fair">Fair</option>
+                            <option value="fixer">Fixer-Upper</option>
+                            <option value="new">New Build</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Year Built</label><input type="number" class="yearBuilt" placeholder="2005"/></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group"><label>Bedrooms</label><input type="number" class="bedrooms" placeholder="3" min="0"/></div>
+                    <div class="form-group"><label>Bathrooms</label><input type="number" class="bathrooms" placeholder="2" step="0.5" min="0"/></div>
+                    <div class="form-group"><label>Sq Ft (Living)</label><input type="number" class="sqft" placeholder="1800"/></div>
+                    <div class="form-group"><label>Lot Size (acres)</label><input type="number" class="lotSize" placeholder="0.25" step="0.01"/></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Garage</label>
+                        <select class="garage">
+                            <option value="none">None</option><option value="1car">1-Car</option>
+                            <option value="2car" selected>2-Car</option><option value="3car">3-Car</option>
+                            <option value="carport">Carport</option>
+                        </select>
+                    </div>
+                    <div class="form-group grow"><label>Listing URL</label><input type="url" class="listingUrl" placeholder="https://..."/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── LISTING / AGENT INFORMATION ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#127970; Listing / Agent Information</h3>
+                <div class="form-row">
+                    <div class="form-group grow"><label>Listing Agent</label><input type="text" class="listingAgent" placeholder=""/></div>
+                    <div class="form-group"><label>Agent Phone</label><input type="text" class="agentPhone" placeholder=""/></div>
+                    <div class="form-group"><label>Brokerage</label><input type="text" class="brokerage" placeholder=""/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Days on Market</label><input type="number" class="daysOnMarket" placeholder=""/></div>
+                    <div class="form-group"><label>MLS #</label><input type="text" class="mlsNumber" placeholder=""/></div>
+                    <div class="form-group"><label>Source</label><input type="text" class="listingSource" placeholder="Zillow, Redfin, etc."/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── PRICING ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128176; Pricing</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>List Price</label><input type="text" class="listPrice" placeholder="$350,000"/></div>
+                    <div class="form-group"><label>Appraised Value</label><input type="text" class="appraisedValue" placeholder="$350,000"/></div>
+                    <div class="form-group"><label>Offer / Purchase Price</label><input type="text" class="purchasePrice" placeholder="$340,000"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Discount from List</label><input type="text" class="discountFromList" readonly placeholder="--"/></div>
+                    <div class="form-group"><label>Seller Credits</label><input type="text" class="sellerCredits" placeholder="$0"/></div>
+                    <div class="form-group"><label>Closing Cost Credit</label><input type="text" class="closingCostCredit" placeholder="$0"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── DEAL TYPE & LOAN TERMS ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128221; Deal Type &amp; Loan Terms</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Deal Type</label>
+                        <select class="dealType">
+                            <option value="mortgage">Purchase (Mortgage)</option>
+                            <option value="arm">ARM (Adjustable Rate)</option>
+                            <option value="leasetoown">Lease-to-Own</option>
+                            <option value="rentvsbuy">Rent vs. Buy Analysis</option>
+                            <option value="refinance">Refinance</option>
+                            <option value="cash">Cash Purchase</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Loan Type</label>
+                        <select class="loanType">
+                            <option value="conventional">Conventional</option>
+                            <option value="fha">FHA</option>
+                            <option value="va">VA</option>
+                            <option value="usda">USDA</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Credit Tier</label>
+                        <select class="creditTier">
+                            <option value="tier1">Tier 1 (760+)</option>
+                            <option value="tier2">Tier 2 (720-759)</option>
+                            <option value="tier3">Tier 3 (680-719)</option>
+                            <option value="tier4">Tier 4 (640-679)</option>
+                            <option value="tier5">Tier 5 (&lt;640)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Interest Rate %</label><input type="number" class="interestRate" value="7.00" step="0.125" min="0"/></div>
+                    <div class="form-group">
+                        <label>Loan Term</label>
+                        <select class="loanTermYears">
+                            <option value="10">10 years</option><option value="15">15 years</option>
+                            <option value="20">20 years</option><option value="25">25 years</option>
+                            <option value="30" selected>30 years</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Down Payment %</label><input type="number" class="downPaymentPct" value="20" step="0.5" min="0" max="100"/></div>
+                    <div class="form-group"><label>Down Payment $</label><input type="text" class="downPaymentAmt" placeholder="$0"/></div>
+                    <div class="form-group"><label>Existing Home Equity</label><input type="text" class="existingHomeEquity" placeholder="$0"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── ARM FIELDS (conditional) ─────────── -->
+            <div class="form-section arm-fields hidden">
+                <h3 class="section-title">&#128200; ARM Parameters</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fixed Period (years)</label>
+                        <select class="fixedPeriodYears"><option value="3">3 years</option><option value="5" selected>5 years</option><option value="7">7 years</option><option value="10">10 years</option></select>
+                    </div>
+                    <div class="form-group"><label>Initial Rate %</label><input type="number" class="initialRate" value="6.50" step="0.125"/></div>
+                    <div class="form-group">
+                        <label>Adjustment Period</label>
+                        <select class="adjustmentPeriod"><option value="1" selected>Every 1 year</option><option value="3">Every 3 years</option><option value="5">Every 5 years</option></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Initial Cap %</label><input type="number" class="initialCap" value="2.00" step="0.25"/></div>
+                    <div class="form-group"><label>Periodic Cap %</label><input type="number" class="periodicCap" value="2.00" step="0.25"/></div>
+                    <div class="form-group"><label>Lifetime Cap %</label><input type="number" class="lifetimeCap" value="5.00" step="0.25"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Index (SOFR/Treasury)</label><input type="number" class="currentIndex" value="4.50" step="0.01"/></div>
+                    <div class="form-group"><label>Margin %</label><input type="number" class="margin" value="2.75" step="0.25"/></div>
+                    <div class="form-group"><label>Expected Annual Index Change</label><input type="number" class="expectedIndexChange" value="0.25" step="0.05"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── LEASE-TO-OWN FIELDS (conditional) ─────────── -->
+            <div class="form-section lto-fields hidden">
+                <h3 class="section-title">&#128273; Lease-to-Own Terms</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Market Rent (monthly)</label><input type="text" class="marketRent" placeholder="$1,500"/></div>
+                    <div class="form-group"><label>Rent Premium %</label><input type="number" class="rentPremiumPct" value="10" step="1"/></div>
+                    <div class="form-group"><label>Rent Credit %</label><input type="number" class="rentCreditPct" value="20" step="1"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Option Fee %</label><input type="number" class="optionFeePct" value="3" step="0.5"/></div>
+                    <div class="form-group">
+                        <label>Option Fee Creditable</label>
+                        <select class="optionFeeCreditable"><option value="yes" selected>Yes - Applied to Purchase</option><option value="no">No - Non-Refundable</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Lease Term (months)</label>
+                        <select class="ltoLeaseTerm"><option value="12">12 months</option><option value="24">24 months</option><option value="36" selected>36 months</option><option value="48">48 months</option><option value="60">60 months</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── RENT VS BUY FIELDS (conditional) ─────────── -->
+            <div class="form-section rvb-fields hidden">
+                <h3 class="section-title">&#127960; Rent vs. Buy Comparison</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Current Monthly Rent</label><input type="text" class="monthlyRent" placeholder="$1,500"/></div>
+                    <div class="form-group"><label>Annual Rent Increase %</label><input type="number" class="annualRentIncrease" value="3" step="0.5"/></div>
+                    <div class="form-group"><label>Renter's Insurance (monthly)</label><input type="text" class="rentersInsurance" placeholder="$30"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Annual Appreciation %</label><input type="number" class="annualAppreciation" value="3" step="0.5"/></div>
+                    <div class="form-group"><label>Investment Return % (if renting)</label><input type="number" class="investmentReturn" value="7" step="0.5"/></div>
+                    <div class="form-group">
+                        <label>Years to Compare</label>
+                        <select class="yearsToCompare"><option value="5">5 years</option><option value="7">7 years</option><option value="10" selected>10 years</option><option value="15">15 years</option><option value="20">20 years</option><option value="30">30 years</option></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Maintenance Cost % (of value/yr)</label><input type="number" class="maintenancePct" value="1" step="0.25"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── REFINANCE FIELDS (conditional) ─────────── -->
+            <div class="form-section refi-fields hidden">
+                <h3 class="section-title">&#128260; Refinance Details</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Current Balance</label><input type="text" class="currentBalance" placeholder="$280,000"/></div>
+                    <div class="form-group"><label>Current Rate %</label><input type="number" class="currentRate" value="7.50" step="0.125"/></div>
+                    <div class="form-group"><label>Months Remaining</label><input type="number" class="currentTermRemaining" value="300"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>New Rate %</label><input type="number" class="newRate" value="6.25" step="0.125"/></div>
+                    <div class="form-group">
+                        <label>New Term</label>
+                        <select class="newTermYears"><option value="10">10 years</option><option value="15">15 years</option><option value="20">20 years</option><option value="25">25 years</option><option value="30" selected>30 years</option></select>
+                    </div>
+                    <div class="form-group"><label>Cash Out Amount</label><input type="text" class="cashOutAmount" placeholder="$0"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Refi Closing Costs</label><input type="text" class="refiClosingCosts" placeholder="$3,000"/></div>
+                    <div class="form-group"><label>Points to Purchase</label><input type="number" class="pointsPurchased" value="0" step="0.25" min="0"/></div>
+                    <div class="form-group">
+                        <label>Roll Closing into Loan</label>
+                        <select class="rollRefiClosing"><option value="no">No</option><option value="yes">Yes</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─────────── PROPERTY TAX ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#127963;&#65039; Property Tax</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Fair Market Value</label><input type="text" class="marketValue" placeholder="Syncs from Purchase Price"/></div>
+                    <div class="form-group"><label>Assessment Ratio %</label><input type="number" class="assessmentRatio" value="40" step="1"/></div>
+                    <div class="form-group"><label>Assessed Value</label><input type="text" class="assessedValue" readonly placeholder="Auto-calculated"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>County Mill Rate</label><input type="number" class="countyMillRate" value="8.46" step="0.01"/></div>
+                    <div class="form-group"><label>School Mill Rate</label><input type="number" class="schoolMillRate" value="18.90" step="0.01"/></div>
+                    <div class="form-group"><label>Municipal Mill Rate</label><input type="number" class="municipalMillRate" value="0" step="0.01"/></div>
+                    <div class="form-group"><label>Special District</label><input type="number" class="specialDistrictRate" value="2.99" step="0.01"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Total Mill Rate</label><input type="text" class="totalMillRate" readonly placeholder="Auto-calculated"/></div>
+                    <div class="form-group"><label>Annual Property Tax</label><input type="text" class="annualPropertyTax" readonly placeholder="Auto-calculated"/></div>
+                    <div class="form-group"><label>Monthly Property Tax</label><input type="text" class="monthlyPropertyTax" readonly placeholder="Auto-calculated"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Homestead Exemption $</label><input type="text" class="homesteadExemption" placeholder="$2,000"/></div>
+                    <div class="form-group"><label>Senior Exemption $</label><input type="text" class="seniorExemption" placeholder="$0"/></div>
+                    <div class="form-group"><label>Veteran Exemption $</label><input type="text" class="veteranExemption" placeholder="$0"/></div>
+                    <div class="form-group"><label>Disability Exemption $</label><input type="text" class="disabilityExemption" placeholder="$0"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Other Exemptions $</label><input type="text" class="otherExemptions" placeholder="$0"/></div>
+                    <div class="form-group"><label>Special Assessments $</label><input type="text" class="specialAssessments" placeholder="$0"/></div>
+                    <div class="form-group"><label>Assessment Cap % (annual)</label><input type="number" class="assessmentCapPct" value="3" step="0.5"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── INSURANCE ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128737;&#65039; Insurance</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Annual Homeowner Insurance</label><input type="text" class="annualInsurance" placeholder="$2,000"/></div>
+                    <div class="form-group"><label>Flood Insurance (annual)</label><input type="text" class="floodInsurance" placeholder="$0"/></div>
+                    <div class="form-group"><label>Monthly HOA</label><input type="text" class="monthlyHOA" placeholder="$0"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── PMI / MIP ─────────── -->
+            <div class="form-section pmi-section">
+                <h3 class="section-title">&#128274; PMI / MIP</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>PMI Required</label>
+                        <select class="pmiEnabled"><option value="auto" selected>Auto (if down &lt; 20%)</option><option value="yes">Yes - Force On</option><option value="no">No - Override Off</option></select>
+                    </div>
+                    <div class="form-group"><label>PMI Rate % (annual)</label><input type="number" class="pmiRate" value="0" step="0.05" placeholder="Auto-estimate"/></div>
+                    <div class="form-group"><label>PMI Drop-Off Month</label><input type="text" class="pmiDropOffMonth" readonly placeholder="Auto-calculated"/></div>
+                </div>
+                <div class="form-row fha-mip-row hidden">
+                    <div class="form-group"><label>FHA Upfront MIP (1.75%)</label><input type="text" class="upfrontMIP" readonly placeholder="Auto-calculated"/></div>
+                </div>
+                <div class="form-row va-funding-row hidden">
+                    <div class="form-group"><label>VA Funding Fee %</label><input type="number" class="vaFundingPct" value="2.15" step="0.05"/></div>
+                    <div class="form-group"><label>VA Funding Fee $</label><input type="text" class="vaFundingAmt" readonly placeholder="Auto-calculated"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── CLOSING COSTS ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128203; Closing Costs</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Origination Fee</label><input type="text" class="originationFee" placeholder="1% of loan"/></div>
+                    <div class="form-group"><label>Discount Points $</label><input type="text" class="discountPoints" placeholder="$0"/></div>
+                    <div class="form-group"><label>Appraisal Fee</label><input type="text" class="appraisalFee" placeholder="$450"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Inspection Fee</label><input type="text" class="inspectionFee" placeholder="$400"/></div>
+                    <div class="form-group"><label>Survey Fee</label><input type="text" class="surveyFee" placeholder="$350"/></div>
+                    <div class="form-group"><label>Title Search</label><input type="text" class="titleSearchFee" placeholder="$200"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Title Insurance (Owner)</label><input type="text" class="titleInsurance" placeholder="0.5% of price"/></div>
+                    <div class="form-group"><label>Title Insurance (Lender)</label><input type="text" class="lendersTitleIns" placeholder="0.35% of loan"/></div>
+                    <div class="form-group"><label>Attorney Fee</label><input type="text" class="attorneyFee" placeholder="$500"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Escrow Fee</label><input type="text" class="escrowFee" placeholder="$500"/></div>
+                    <div class="form-group"><label>Recording Fee</label><input type="text" class="recordingFee" placeholder="$125"/></div>
+                    <div class="form-group"><label>Transfer Tax</label><input type="text" class="transferTax" placeholder="$1/$1000"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Application Fee</label><input type="text" class="applicationFee" placeholder="$400"/></div>
+                    <div class="form-group"><label>Underwriting Fee</label><input type="text" class="underwritingFee" placeholder="$500"/></div>
+                    <div class="form-group"><label>Credit Report</label><input type="text" class="creditReportFee" placeholder="$50"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Prepaid Interest (days)</label><input type="number" class="prepaidInterestDays" value="15"/></div>
+                    <div class="form-group">
+                        <label>Roll Closing into Loan</label>
+                        <select class="rollClosingIntoLoan"><option value="no" selected>No</option><option value="yes">Yes</option></select>
+                    </div>
+                    <div class="form-group"><label>Estimated Total Closing</label><input type="text" class="totalClosingCosts" readonly placeholder="Auto-calculated"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── UTILITIES & MONTHLY COSTS ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#9889; Utilities &amp; Monthly Costs</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Electric (monthly)</label><input type="text" class="monthlyElectric" placeholder="$145"/></div>
+                    <div class="form-group"><label>Gas (monthly)</label><input type="text" class="monthlyGasUtility" placeholder="$75"/></div>
+                    <div class="form-group"><label>Water (monthly)</label><input type="text" class="monthlyWater" placeholder="$50"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Sewer (monthly)</label><input type="text" class="monthlySewer" placeholder="$40"/></div>
+                    <div class="form-group"><label>Trash (monthly)</label><input type="text" class="monthlyTrash" placeholder="$25"/></div>
+                    <div class="form-group"><label>Internet (monthly)</label><input type="text" class="monthlyInternet" placeholder="$65"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Other Utilities (monthly)</label><input type="text" class="otherMonthlyUtilities" placeholder="$0"/></div>
+                    <div class="form-group"><label>Total Monthly Utilities</label><input type="text" class="totalMonthlyUtilities" readonly placeholder="Auto-calculated"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── QUALIFICATION / DTI ─────────── -->
+            <div class="form-section">
+                <h3 class="section-title">&#128202; Qualification / DTI</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Gross Monthly Income</label><input type="text" class="grossMonthlyIncome" placeholder="$0"/></div>
+                    <div class="form-group"><label>Monthly Debts (non-housing)</label><input type="text" class="monthlyDebts" placeholder="$0"/></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Front-End DTI %</label><input type="text" class="frontEndDTI" readonly placeholder="Auto-calculated"/></div>
+                    <div class="form-group"><label>Back-End DTI %</label><input type="text" class="backEndDTI" readonly placeholder="Auto-calculated"/></div>
+                    <div class="form-group">
+                        <label>Filing Status</label>
+                        <select class="filingStatus"><option value="single">Single</option><option value="married">Married Filing Jointly</option></select>
+                    </div>
+                    <div class="form-group"><label>Marginal Tax Rate %</label><input type="number" class="marginalTaxRate" value="22" step="1"/></div>
+                </div>
+            </div>
+
+            <!-- ─────────── CALCULATE BUTTON ─────────── -->
+            <div class="form-section" style="text-align:center;padding:20px;">
+                <button class="btn" data-action="calculate" style="font-size:1rem;padding:12px 40px;">&#128290; Calculate</button>
+            </div>
+
+        </div><!-- /.card-body -->
+    </div><!-- /tab:input -->
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- ══════════════════════ TAB: RESULTS ═════════════════════════ -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="vehicle-tab-content" data-tab="results">
+        <div class="card-body">
+            <div class="results-output">
+                <p style="color:var(--text-muted);text-align:center;padding:40px;">
+                    Click <strong>Calculate</strong> on the Input tab to see results.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- ══════════════════════ TAB: SCENARIOS ═══════════════════════ -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div class="vehicle-tab-content" data-tab="scenarios">
+        <div class="card-body">
+            <div class="form-section">
+                <h3 class="section-title">&#127919; Pre-Built Scenarios</h3>
+                <div class="form-row">
+                    <div class="form-group grow">
+                        <label>Select Scenario</label>
+                        <select class="scenarioSelector">
+                            <option value="">-- Choose a scenario --</option>
+                            <optgroup label="Purchase Scenarios">
+                                <option value="first_time_fha">First-Time Buyer (FHA 3.5% Down)</option>
+                                <option value="conventional_20">Conventional 20% Down</option>
+                                <option value="conventional_10">Conventional 10% Down (PMI)</option>
+                                <option value="conventional_5">Conventional 5% Down (PMI)</option>
+                                <option value="va_zero_down">VA Loan (0% Down)</option>
+                                <option value="usda_rural">USDA Rural (0% Down)</option>
+                            </optgroup>
+                            <optgroup label="Alternative Paths">
+                                <option value="lease_to_own">Lease-to-Own (36 months)</option>
+                                <option value="rent_vs_buy_10yr">Rent vs. Buy (10-Year)</option>
+                                <option value="arm_5_1">ARM 5/1 Aggressive</option>
+                            </optgroup>
+                            <optgroup label="Georgia Specific">
+                                <option value="ga_cobb_homestead">GA Cobb County + Homestead</option>
+                                <option value="ga_cobb_senior">GA Cobb County + Senior Exemption</option>
+                                <option value="ga_cobb_veteran">GA Cobb County + Veteran Exemption</option>
+                            </optgroup>
+                            <optgroup label="Refinance">
+                                <option value="refi_rate_drop">Rate Reduction Refi</option>
+                                <option value="refi_cash_out">Cash-Out Refi</option>
+                                <option value="refi_term_reduce">Term Reduction (30->15)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="form-group shrink"><label>&nbsp;</label><button class="btn btn-small" data-action="apply-scenario">Apply</button></div>
+                </div>
+                <div class="scenario-description" style="padding:15px;color:var(--text-muted);font-size:0.85rem;">
+                    Select a scenario to see its description and auto-fill parameters.
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /.property-card -->
+</template>
+
+<!-- ═══════════════════════════ SCRIPTS ═══════════════════════════ -->
+<script src="js/utils.js" type="module"></script>
+<script src="js/data.js" type="module"></script>
+<script src="js/api.js" type="module"></script>
+<script src="js/calculations.js" type="module"></script>
+<script src="js/housing-data.js" type="module"></script>
+<script src="js/housing-calculations.js" type="module"></script>
+<script src="js/housing-app.js" type="module"></script>
+<script src="js/app.js" type="module"></script>
+
+</body>
+</html>

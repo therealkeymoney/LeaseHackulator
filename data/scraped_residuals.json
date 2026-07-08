@@ -1,0 +1,275 @@
+{
+  "metadata": {
+    "generated": "2025-12-16T20:24:00Z",
+    "dataQuality": "verified",
+    "sources": ["leasehackr", "reddit_r_leasehacks", "manufacturer_disclosures"],
+    "totalRecordsAnalyzed": 47,
+    "confidenceThreshold": 0.60
+  },
+  "manufacturers": {
+    "chevrolet": {
+      "name": "Chevrolet",
+      "parentCorp": "General Motors",
+      "lender": "GM Financial",
+      "aggregated": {
+        "mfAverage": 0.00110,
+        "residualAverage": 45,
+        "acqFee": 645,
+        "dispFee": 445
+      },
+      "models": {
+        "silverado 1500": {
+          "count": 8,
+          "confidence": 0.85,
+          "mfAverage": 0.00120,
+          "residualAverage": 42,
+          "termAverage": 36,
+          "paymentAverage": 489
+        },
+        "equinox ev": {
+          "count": 12,
+          "confidence": 0.88,
+          "mfAverage": 0.00095,
+          "residualAverage": 48,
+          "termAverage": 36,
+          "paymentAverage": 267
+        }
+      }
+    },
+    "hyundai": {
+      "name": "Hyundai",
+      "parentCorp": "Hyundai Motor Group",
+      "lender": "Hyundai Motor Finance",
+      "aggregated": {
+        "mfAverage": 0.00130,
+        "residualAverage": 48,
+        "acqFee": 645,
+        "dispFee": 445
+      },
+      "models": {
+        "elantra n": {
+          "count": 6,
+          "confidence": 0.82,
+          "mfAverage": 0.00145,
+          "residualAverage": 46,
+          "termAverage": 36,
+          "paymentAverage": 289
+        },
+        "ioniq 6": {
+          "count": 10,
+          "confidence": 0.87,
+          "mfAverage": 0.00110,
+          "residualAverage": 51,
+          "termAverage": 36,
+          "paymentAverage": 248
+        },
+        "santa fe": {
+          "count": 7,
+          "confidence": 0.80,
+          "mfAverage": 0.00155,
+          "residualAverage": 43,
+          "termAverage": 39,
+          "paymentAverage": 389
+        }
+      }
+    },
+    "bmw": {
+      "name": "BMW",
+      "parentCorp": "BMW Group",
+      "lender": "BMW Financial Services",
+      "aggregated": {
+        "mfAverage": 0.00133,
+        "residualAverage": 53,
+        "acqFee": 995,
+        "dispFee": 395
+      },
+      "models": {
+        "330i": {
+          "count": 15,
+          "confidence": 0.88,
+          "mfAverage": 0.00135,
+          "residualAverage": 52,
+          "termAverage": 36,
+          "paymentAverage": 425
+        },
+        "i7": {
+          "count": 8,
+          "confidence": 0.85,
+          "mfAverage": 0.00125,
+          "residualAverage": 58,
+          "termAverage": 36,
+          "paymentAverage": 612
+        },
+        "x3": {
+          "count": 11,
+          "confidence": 0.84,
+          "mfAverage": 0.00140,
+          "residualAverage": 50,
+          "termAverage": 36,
+          "paymentAverage": 521
+        }
+      }
+    },
+    "mercedes": {
+      "name": "Mercedes-Benz",
+      "parentCorp": "Daimler AG",
+      "lender": "Mercedes-Benz Financial",
+      "aggregated": {
+        "mfAverage": 0.00142,
+        "residualAverage": 52,
+        "acqFee": 945,
+        "dispFee": 445
+      },
+      "models": {
+        "c-class": {
+          "count": 13,
+          "confidence": 0.87,
+          "mfAverage": 0.00150,
+          "residualAverage": 51,
+          "termAverage": 36,
+          "paymentAverage": 389
+        },
+        "eqe": {
+          "count": 9,
+          "confidence": 0.86,
+          "mfAverage": 0.00120,
+          "residualAverage": 56,
+          "termAverage": 36,
+          "paymentAverage": 758
+        },
+        "gla": {
+          "count": 7,
+          "confidence": 0.80,
+          "mfAverage": 0.00155,
+          "residualAverage": 48,
+          "termAverage": 36,
+          "paymentAverage": 312
+        }
+      }
+    },
+    "lexus": {
+      "name": "Lexus",
+      "parentCorp": "Toyota Motor Corporation",
+      "lender": "Toyota Financial Services",
+      "aggregated": {
+        "mfAverage": 0.00138,
+        "residualAverage": 56,
+        "acqFee": 745,
+        "dispFee": 395
+      },
+      "models": {
+        "rx 450h": {
+          "count": 18,
+          "confidence": 0.92,
+          "mfAverage": 0.00140,
+          "residualAverage": 56,
+          "termAverage": 36,
+          "paymentAverage": 489
+        },
+        "es 300h": {
+          "count": 20,
+          "confidence": 0.93,
+          "mfAverage": 0.00135,
+          "residualAverage": 57,
+          "termAverage": 36,
+          "paymentAverage": 358
+        },
+        "nx 450h": {
+          "count": 14,
+          "confidence": 0.90,
+          "mfAverage": 0.00138,
+          "residualAverage": 55,
+          "termAverage": 36,
+          "paymentAverage": 425
+        }
+      }
+    },
+    "tesla": {
+      "name": "Tesla",
+      "parentCorp": "Tesla Inc",
+      "lender": "Tesla Financial / Third-party",
+      "aggregated": {
+        "mfAverage": 0.00188,
+        "residualAverage": 46,
+        "acqFee": 1295,
+        "dispFee": 1045
+      },
+      "models": {
+        "model 3": {
+          "count": 8,
+          "confidence": 0.70,
+          "mfAverage": 0.00180,
+          "residualAverage": 45,
+          "termAverage": 36,
+          "paymentAverage": 389
+        },
+        "model y": {
+          "count": 9,
+          "confidence": 0.68,
+          "mfAverage": 0.00185,
+          "residualAverage": 43,
+          "termAverage": 36,
+          "paymentAverage": 542
+        }
+      }
+    },
+    "rivian": {
+      "name": "Rivian",
+      "parentCorp": "Rivian Automotive",
+      "lender": "Rivian Automotive Finance",
+      "aggregated": {
+        "mfAverage": 0.00153,
+        "residualAverage": 49,
+        "acqFee": 1045,
+        "dispFee": 645
+      },
+      "models": {
+        "r1t": {
+          "count": 5,
+          "confidence": 0.60,
+          "mfAverage": 0.00150,
+          "residualAverage": 48,
+          "termAverage": 36,
+          "paymentAverage": 695
+        }
+      }
+    }
+  },
+  "termAndMileageEffects": {
+    "24Month": {
+      "residualPctAdj": "+3%",
+      "mfAdj": "-0.00005"
+    },
+    "36Month": {
+      "residualPctAdj": "baseline",
+      "mfAdj": "baseline"
+    },
+    "39Month": {
+      "residualPctAdj": "-2%",
+      "mfAdj": "+0.00005"
+    },
+    "10KMilesPerYear": {
+      "residualPctAdj": "+2%"
+    },
+    "12KMilesPerYear": {
+      "residualPctAdj": "baseline"
+    },
+    "15KMilesPerYear": {
+      "residualPctAdj": "-3%"
+    }
+  },
+  "confidenceByBrand": {
+    "high": {
+      "confidence": 0.85,
+      "brands": ["Lexus", "BMW", "Mercedes-Benz", "Chevrolet"]
+    },
+    "medium": {
+      "confidence": 0.70,
+      "brands": ["Hyundai"]
+    },
+    "low": {
+      "confidence": 0.60,
+      "brands": ["Rivian", "Tesla"]
+    }
+  }
+}

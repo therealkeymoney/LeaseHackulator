@@ -1,0 +1,166 @@
+{
+  "manufacturerLeaseFees": {
+    "domesticBrands": {
+      "Buick": {
+        "acquisition": 695,
+        "disposition": 400
+      },
+      "Cadillac": {
+        "acquisition": 695,
+        "disposition": 400
+      },
+      "Chevrolet": {
+        "acquisition": 695,
+        "disposition": 400
+      },
+      "Chrysler": {
+        "acquisition": 695,
+        "disposition": [400, 495]
+      },
+      "Dodge": {
+        "acquisition": 695,
+        "disposition": [400, 495]
+      },
+      "Ford": {
+        "acquisition": 695,
+        "disposition": 495
+      },
+      "GMC": {
+        "acquisition": 695,
+        "disposition": 400
+      },
+      "Jeep": {
+        "acquisition": 695,
+        "disposition": [400, 495]
+      },
+      "Lincoln": {
+        "acquisition": 695,
+        "disposition": 495
+      },
+      "Ram": {
+        "acquisition": 695,
+        "disposition": [400, 495]
+      },
+      "Tesla": {
+        "acquisition": 695,
+        "disposition": 395
+      }
+    },
+    "japaneseBrands": {
+      "Acura": {
+        "acquisition": 595,
+        "disposition": [350, 400]
+      },
+      "Honda": {
+        "acquisition": 595,
+        "disposition": [350, 400]
+      },
+      "Infiniti": {
+        "acquisition": 695,
+        "disposition": [350, 400]
+      },
+      "Lexus": {
+        "acquisition": 650,
+        "disposition": [350, 400]
+      },
+      "Mazda": {
+        "acquisition": 650,
+        "disposition": [350, 395]
+      },
+      "Mitsubishi": {
+        "acquisition": 595,
+        "disposition": 395
+      },
+      "Nissan": {
+        "acquisition": 695,
+        "disposition": [350, 400]
+      },
+      "Subaru": {
+        "acquisition": [595, 650],
+        "disposition": [350, 395]
+      },
+      "Toyota": {
+        "acquisition": 650,
+        "disposition": [350, 400]
+      }
+    },
+    "koreanBrands": {
+      "Genesis": {
+        "acquisition": [695, 795],
+        "disposition": 400
+      },
+      "Hyundai": {
+        "acquisition": [695, 795],
+        "disposition": 400
+      },
+      "Kia": {
+        "acquisition": [695, 795],
+        "disposition": [400, 450]
+      }
+    },
+    "europeanBrands": {
+      "AlfaRomeo": {
+        "acquisition": 695,
+        "disposition": 395
+      },
+      "Audi": {
+        "acquisition": 895,
+        "disposition": [395, 495]
+      },
+      "BMW": {
+        "acquisition": 925,
+        "disposition": 350
+      },
+      "Jaguar": {
+        "acquisition": 1075,
+        "disposition": 395
+      },
+      "LandRover": {
+        "acquisition": 1075,
+        "disposition": 395
+      },
+      "MercedesBenz": {
+        "acquisition": [895, 995],
+        "disposition": [395, 495]
+      },
+      "MINI": {
+        "acquisition": 925,
+        "disposition": [350, 395]
+      },
+      "Porsche": {
+        "acquisition": 1095,
+        "disposition": [350, 495]
+      },
+      "Volkswagen": {
+        "acquisition": [795, 895],
+        "disposition": [395, 495]
+      },
+      "Volvo": {
+        "acquisition": 995,
+        "disposition": 450
+      }
+    },
+    "evStartups": {
+      "Lucid": {
+        "acquisition": 995,
+        "disposition": 450
+      },
+      "Polestar": {
+        "acquisition": 995,
+        "disposition": [395, 450]
+      },
+      "Rivian": {
+        "acquisition": 895,
+        "disposition": 495
+      }
+    }
+  },
+  "metadata": {
+    "lastUpdated": "2026-01",
+    "notes": [
+      "Disposition fees are typically waived when leasing or purchasing another vehicle from the same manufacturer/brand family",
+      "Some states have legal limits on disposition fees",
+      "Fees shown in USD"
+    ]
+  }
+}

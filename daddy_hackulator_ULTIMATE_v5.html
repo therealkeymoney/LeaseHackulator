@@ -17459,6 +17459,17 @@ body.dark-theme {
       <div class="form-row"><div class="form-group"><label>Additional Down at Balloon</label><input type="number" class="balloonAddDown" value="0" title="Extra cash applied when refinancing the balloon, reducing the refinanced amount."/></div><div class="form-group"><label>New Term After Balloon</label><input type="number" class="balloonNewTerm" value="24" title="Finance term for refinancing the balloon amount."/></div></div>
       <div class="form-row"><div class="form-group"><label>Balloon Amount (calculated)</label><input type="number" class="balloonRemCap" readonly style="background:#f8fafc;" title="Remaining balance at balloon due month — this is the balloon payment."/></div><div class="form-group"><label>New Payment After Balloon</label><input type="number" class="balloonNewPay" readonly style="background:#f8fafc;"/></div><div class="form-group"><label>Residual Value at Balloon</label><input type="number" class="residualAtBalloon" readonly style="background:#f8fafc;" title="Projected market value at balloon month (interpolated between MSRP and end-of-lease residual)."/></div></div>
     </div>
+    <div class="form-section mileage-band-section"><h3 class="section-title">🛣️ Mileage Band Optimizer</h3>
+      <p style="font-size:0.7rem;color:var(--text-muted,#6b7280);margin:0 0 8px 0;">Should you pay for a higher mileage allowance upfront, or take the lower band and pay the per-mile overage at turn-in? Enter the alternative band and your realistic expected mileage — the decision rule picks the band whose <em>total expected cost</em> (lease cost + expected overage bill) is lower, and computes the break-even excess-mile rate.</p>
+      <div class="form-row">
+        <div class="form-group"><label>Alt Allowance (mi/yr)</label><input type="number" class="mbAltMiles" value="15000" step="500" title="The other mileage band you're quoting (e.g. 15,000 if your main inputs use 10,000/12,000)."/></div>
+        <div class="form-group"><label>Alt Residual % <span style="font-size:0.65rem;color:var(--text-muted,#6b7280);font-weight:400;">(blank = auto)</span></label><input type="number" class="mbAltResidual" step="0.5" placeholder="auto −1%/2.5k mi" title="The captive's residual % for the alternative band. Leave blank to estimate at −1 point per extra 2,500 mi/yr (typical captive step). Override with the real program number when you have it."/></div>
+        <div class="form-group"><label>Expected Actual (mi/yr)</label><input type="number" class="mbExpectedMiles" value="0" step="500" title="Your honest expected annual mileage. 0 = use the lease's annual mileage input."/></div>
+        <div class="form-group"><label>Overage Rate ($/mi)</label><input type="number" class="mbOverageRate" value="0.25" step="0.01" title="The contract's excess-mileage charge at turn-in (typically $0.15–$0.30/mi; check the lease agreement)."/></div>
+        <div class="form-group shrink"><label>&nbsp;</label><button type="button" class="btn btn-small mileage-band-run">⚖️ Compare Bands</button></div>
+      </div>
+      <div class="mileage-band-output" style="margin-top:8px;font-size:0.78rem;"></div>
+    </div>
     <div class="form-section"><h3 class="section-title">🏢 Dealer</h3>
       <div class="form-row"><div class="form-group grow"><label>Name</label><input type="text" class="dealerName" placeholder="Auto-filled"/></div><div class="form-group"><label>Phone</label><input type="text" class="dealerPhone"/></div></div>
       <div class="form-row"><div class="form-group grow"><label>Location</label><input type="text" class="dealerLocation"/></div><div class="form-group"><label>Stock#</label><input type="text" class="stockNumber"/></div><div class="form-group"><label>DOM</label><input type="number" class="daysOnMarket"/></div></div>
@@ -18279,6 +18290,17 @@ body.dark-theme {
         if (scenarioRefresh)
           scenarioRefresh.addEventListener("click", function () {
             try { generateScenarioCompare(card); } catch(e) { console.warn('scenario refresh failed:', e); }
+          });
+
+        // Mileage Band Optimizer button
+        var mbRun = card.querySelector(".mileage-band-run");
+        if (mbRun)
+          mbRun.addEventListener("click", function () {
+            try { runMileageBandAnalysis(card); } catch(e) {
+              console.warn('mileage band analysis failed:', e);
+              var mbOut = card.querySelector('.mileage-band-output');
+              if (mbOut) mbOut.innerHTML = '<div style="color:#dc2626;">Analysis failed — check that MSRP, selling price, residual %, and term are filled in.</div>';
+            }
           });
 
         // ── Auto-recalc annual fuel/electricity costs on any input change ──
@@ -20496,6 +20518,137 @@ body.dark-theme {
       }
 
       // ============================================================
+      // MILEAGE BAND OPTIMIZER — prepay miles vs pay overage at turn-in
+      // ============================================================
+      // Decision rule: choose the lower-mileage band only when its savings
+      // exceed the expected overage bill.
+      //   Expected cost of a band = (DAS + total payments) + max(0, expected
+      //     total miles − band allowance) × contract per-mile rate
+      // Break-even excess-mile rate =
+      //   (higher-band lease cost − lower-band lease cost) / additional miles
+      // If the contract's turn-in rate is ABOVE break-even, buying the miles
+      // upfront (higher band / lower residual) is cheaper per mile; if BELOW,
+      // take the lower band and intentionally pay the overage. Uses total
+      // pre-buyout cost over the full term (DAS + payments incl. monthly tax
+      // as configured), not just the monthly-payment difference.
+      function runMileageBandAnalysis(card) {
+        var out = card.querySelector('.mileage-band-output');
+        if (!out) return;
+        var p = gatherParams(card);
+        var term = parseFloat(p.term) || 36;
+        var curMiles = parseFloat(p.annualMiles) || 12000;
+        var curResidual = parseFloat(p.residualPct) || 55;
+
+        var altMiles = getNum((card.querySelector('.mbAltMiles') || {}).value) || 15000;
+        var altResRaw = (card.querySelector('.mbAltResidual') || {}).value;
+        var expMiles = getNum((card.querySelector('.mbExpectedMiles') || {}).value) || curMiles;
+        var overageRate = parseFloat((card.querySelector('.mbOverageRate') || {}).value) || 0.25;
+
+        if (altMiles === curMiles) {
+          out.innerHTML = '<div style="color:#dc2626;">Alt allowance equals the lease\'s current annual mileage — enter a different band to compare.</div>';
+          return;
+        }
+
+        // Residual for the alt band: user override, else heuristic −1 point
+        // per extra 2,500 mi/yr (+1 point when the alt band is LOWER). This
+        // is an estimate — captive RV tables vary; override with the real
+        // program number for exact economics.
+        var altResidual = parseFloat(altResRaw);
+        var altResIsEstimate = false;
+        if (!isFinite(altResidual) || altResidual <= 0) {
+          altResidual = curResidual - (altMiles - curMiles) / 2500;
+          altResIsEstimate = true;
+        }
+
+        // Run a full lease calc per band (same money factor, fees, tax,
+        // equity routing — only allowance + residual change).
+        var curR = calculateLease(p);
+        var altR = calculateLease(Object.assign({}, p, {
+          annualMiles: altMiles, residualPct: altResidual
+        }));
+
+        var mk = function (r, miles, residPct, isEst) {
+          return {
+            annualMiles: miles,
+            residPct: residPct,
+            isEst: isEst,
+            allowanceTotal: miles * (term / 12),
+            leaseCost: (r.totalDueAtSigning || 0) + (r.totalPayments || 0),
+            monthly: r.totalMonthly || 0,
+          };
+        };
+        var cur = mk(curR, curMiles, curResidual, false);
+        var alt = mk(altR, altMiles, altResidual, altResIsEstimate);
+        var low = cur.annualMiles < alt.annualMiles ? cur : alt;
+        var high = cur.annualMiles < alt.annualMiles ? alt : cur;
+
+        var expectedTotal = expMiles * (term / 12);
+        var band = function (b) {
+          b.excess = Math.max(0, expectedTotal - b.allowanceTotal);
+          b.overageBill = b.excess * overageRate;
+          b.expectedCost = b.leaseCost + b.overageBill;
+          return b;
+        };
+        band(low); band(high);
+
+        var additionalMiles = high.allowanceTotal - low.allowanceTotal;
+        var upfrontMileageCost = high.leaseCost - low.leaseCost;
+        var breakEvenRate = additionalMiles > 0 ? (upfrontMileageCost / additionalMiles) : 0;
+        var winner = low.expectedCost <= high.expectedCost ? low : high;
+        var delta = Math.abs(high.expectedCost - low.expectedCost);
+
+        var kmi = function (n) { return Math.round(n).toLocaleString(); };
+        var bandName = function (b) { return kmi(b.annualMiles) + '-mi band'; };
+        var td = 'padding:5px 8px;border-bottom:1px solid var(--border,#e5e7eb);';
+        var tdr = td + 'text-align:right;font-variant-numeric:tabular-nums;';
+        var row = function (label, l, h) {
+          return '<tr><td style="' + td + 'font-weight:600;">' + label + '</td>'
+            + '<td style="' + tdr + '">' + l + '</td>'
+            + '<td style="' + tdr + '">' + h + '</td></tr>';
+        };
+
+        var html = '<table style="width:100%;border-collapse:collapse;">'
+          + '<thead><tr style="background:var(--secondary);color:#fff;">'
+          + '<th style="padding:5px 8px;text-align:left;">Item</th>'
+          + '<th style="padding:5px 8px;text-align:right;">' + bandName(low) + '</th>'
+          + '<th style="padding:5px 8px;text-align:right;">' + bandName(high) + '</th></tr></thead><tbody>'
+          + row('Total allowed miles', kmi(low.allowanceTotal), kmi(high.allowanceTotal))
+          + row('Residual % used', low.residPct.toFixed(1) + '%' + (low.isEst ? ' <em>(est.)</em>' : ''),
+                                    high.residPct.toFixed(1) + '%' + (high.isEst ? ' <em>(est.)</em>' : ''))
+          + row('Monthly payment', fmt(low.monthly), fmt(high.monthly))
+          + row('Lease cost over term (DAS + payments)', fmt(low.leaseCost), fmt(high.leaseCost))
+          + row('Your expected miles (' + kmi(expMiles) + '/yr)', kmi(expectedTotal), kmi(expectedTotal))
+          + row('Excess miles', kmi(low.excess), kmi(high.excess))
+          + row('Overage @ $' + overageRate.toFixed(2) + '/mi', fmt(low.overageBill), fmt(high.overageBill))
+          + row('<strong>Expected total cost</strong>', '<strong>' + fmt(low.expectedCost) + '</strong>', '<strong>' + fmt(high.expectedCost) + '</strong>')
+          + row('Better choice', winner === low ? '✅ Yes' : 'No', winner === high ? '✅ Yes' : 'No')
+          + '</tbody></table>';
+
+        html += '<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:' + (winner === high ? '#dcfce7' : '#dbeafe') + ';">'
+          + '<strong>Verdict:</strong> the ' + bandName(winner) + ' is expected to be cheaper by ' + fmt(delta)
+          + ' over the term at your expected mileage.'
+          + '</div>';
+
+        html += '<div style="margin-top:8px;font-size:0.74rem;color:#334155;line-height:1.55;">'
+          + '<div><strong>Break-even excess-mile rate:</strong> '
+          + fmt(upfrontMileageCost) + ' extra upfront ÷ ' + kmi(additionalMiles) + ' extra miles = '
+          + '<strong>$' + breakEvenRate.toFixed(3) + '/mi</strong> vs contract $' + overageRate.toFixed(2) + '/mi → '
+          + (overageRate > breakEvenRate
+              ? 'the turn-in rate costs MORE than prepaying — <strong>buy the miles upfront</strong> (higher band) if you expect to use them.'
+              : 'the turn-in rate is CHEAPER than prepaying — <strong>take the lower band</strong> and intentionally pay the overage on the miles you actually drive.')
+          + '</div>'
+          + '<div style="margin-top:6px;"><strong>The decision rule:</strong> choose the lower-mileage band only when its savings exceed your expected overage bill. Expected cost of the low band = its total lease cost + (expected excess miles × per-mile charge); compare against the higher band\'s total lease cost. Use the total pre-tax payment difference over the full term — not just the monthly-payment difference — and include acquisition, disposition, and tax treatment when modeling exact economics.</div>'
+          + '<div style="margin-top:6px;"><strong>Why prepaid miles are often cheaper:</strong> the real comparison is the upfront mileage cost (the payment increase caused by the lower residual) vs the end-of-term cost (excess miles × contract rate). The Federal Reserve\'s consumer leasing guide gives an example where writing the lease at the higher anticipated mileage lowers the residual by $0.13/mi while the turn-in penalty is $0.15/mi — prepaying is $0.02/mi cheaper, and the lower residual also trims rent charges. But it varies by captive, model, term, and band — which is why this computes YOUR break-even rate directly.</div>'
+          + '<div style="margin-top:6px;"><strong>If you might buy the car at lease end:</strong> model the buyout-vs-market-value outcome separately — mileage charges become largely irrelevant (you never turn the car in), but depreciation risk from the extra miles absolutely does not.</div>'
+          + (low.isEst || high.isEst
+              ? '<div style="margin-top:6px;color:#92400e;"><strong>Note:</strong> the alt band\'s residual is estimated at −1 point per 2,500 mi/yr. Captive RV tables differ — enter the real program residual in "Alt Residual %" for exact numbers.</div>'
+              : '')
+          + '</div>';
+
+        out.innerHTML = html;
+      }
+
+      // ============================================================
       // SECTION 9: RENDER RESULTS
       // ============================================================
 
@@ -21318,6 +21471,67 @@ body.dark-theme {
                 })
                 .join("") +
               "</tbody></table>";
+
+            // ─── Lease vs Finance break-even point ────────────────────────
+            // Month-by-month net-position race over the lease term:
+            //   lease net(m)   = lease DAS + lease monthly × (m−1)   (no equity)
+            //   finance net(m) = fin DAS + fin monthly × (m−1) − equity(m)
+            //   equity(m)      = est. vehicle value(m) − loan balance(m)
+            // Vehicle value depreciates linearly from the net selling price to
+            // the lease residual at lease end (the captive's own value curve),
+            // floored at $0. Break-even = first month the financed buyer's net
+            // position beats the lessee's. Early on, finance usually trails
+            // (upfront tax + slow equity while underwater); if/when it crosses,
+            // keeping the car longer favors the loan.
+            try {
+              var beTerm = leaseR.term || 36;
+              var beLeaseDAS = leaseR.totalDueAtSigning || 0;
+              var beLeaseMo = leaseR.totalMonthly || 0;
+              var beFinDAS = finR.totalDueAtSigning || 0;
+              var beFinMo = finR.monthlyPayment || 0;
+              var beStartVal = finR.netSellingPrice || leaseR.sellingPrice || 0;
+              var beResid = leaseR.residualValue || 0;
+              var beDepPerMo = beTerm > 0 ? (beStartVal - beResid) / beTerm : 0;
+              var beAmort = finR.amortization || [];
+
+              var beMonth = 0, beLeaseNetEnd = 0, beFinNetEnd = 0, beEquityEnd = 0;
+              if (beStartVal > 0 && beLeaseMo > 0 && beFinMo > 0 && beAmort.length > 0) {
+                for (var bm = 1; bm <= beTerm; bm++) {
+                  var val = Math.max(0, beStartVal - beDepPerMo * bm);
+                  var bal = bm <= beAmort.length ? (beAmort[bm - 1].balance || 0) : 0;
+                  var equity = val - bal;
+                  var leaseNet = beLeaseDAS + beLeaseMo * (bm - 1);
+                  var finNet = beFinDAS + beFinMo * (bm - 1) - equity;
+                  if (beMonth === 0 && finNet <= leaseNet) beMonth = bm;
+                  if (bm === beTerm) {
+                    beLeaseNetEnd = leaseNet; beFinNetEnd = finNet; beEquityEnd = equity;
+                  }
+                }
+
+                var beVerdict;
+                if (beMonth > 0 && beMonth <= 1) {
+                  beVerdict = 'Financing is ahead from the start — its equity outpaces the extra cash out immediately.';
+                } else if (beMonth > 0) {
+                  beVerdict = 'Financing pulls ahead of leasing at <strong>month ' + beMonth + '</strong> of ' + beTerm
+                    + ' (year ' + (beMonth / 12).toFixed(1) + '). Keep the car past that point and the loan wins; exit before it and the lease was the cheaper seat.';
+                } else {
+                  beVerdict = 'No crossover within the ' + beTerm + '-month lease term — on a net-of-equity basis the lease stays ahead through lease end. Financing only wins if you keep the car well beyond the term (or the resale market beats the residual curve).';
+                }
+
+                trioDiv.innerHTML +=
+                  '<div style="margin-top:10px;padding:8px 10px;border:1px solid var(--border,#e5e7eb);border-radius:6px;background:var(--surface,#f8fafc);">'
+                  + '<div style="font-weight:700;color:var(--secondary);margin-bottom:4px;">⚖️ Lease vs Finance Break-Even</div>'
+                  + '<div style="font-size:0.74rem;color:#334155;line-height:1.55;">'
+                  + beVerdict
+                  + '<div style="margin-top:6px;">At lease end (month ' + beTerm + '): lease total cash '
+                  + fmt(beLeaseNetEnd) + ' (no equity) vs finance net position ' + fmt(beFinNetEnd)
+                  + ' (' + fmt(beFinDAS + beFinMo * (beTerm - 1)) + ' cash out − ' + fmt(beEquityEnd) + ' equity).</div>'
+                  + '<div style="margin-top:6px;font-size:0.68rem;color:#64748b;font-style:italic;">Assumes the vehicle depreciates linearly from the net selling price to the lease residual over the term (the captive\'s own value curve) and equity = estimated value − loan balance. Sale/trade friction, maintenance beyond warranty, and market swings are not modeled.</div>'
+                  + '</div></div>';
+              }
+            } catch (beErr) {
+              console.warn('lease-vs-finance break-even failed:', beErr);
+            }
           } catch (trioErr) {
             trioDiv.innerHTML =
               '<div style="color:var(--muted);">Enter pricing data to see comparison</div>';

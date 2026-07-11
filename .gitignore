@@ -1,0 +1,11 @@
+# Dependencies (wrangler / playwright dev tooling)
+node_modules/
+package-lock.json
+
+# Wrangler build/cache output
+.wrangler/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log

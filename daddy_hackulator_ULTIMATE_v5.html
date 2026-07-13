@@ -878,6 +878,17 @@
         overflow-x: auto;
       }
 
+      /* Bottom mirror of the tab bar — sits below Results/Deals so you can
+         jump back to Input without scrolling to the top of the card. */
+      .vehicle-tabs-bottom {
+        border-bottom: none;
+        border-top: 2px solid var(--border);
+        position: sticky;
+        bottom: 0;
+        background: var(--card-bg, #fff);
+        z-index: 5;
+      }
+
       .vehicle-tabs .tab-btn {
         background: transparent;
         color: #666666;
@@ -17694,6 +17705,13 @@ body.dark-theme {
       <div class="deal-detail-output" style="display:none;"></div>
     </div>
   </div>
+  <!-- Bottom tab bar — mirror of the top tabs so you can jump back to
+       Input from the bottom of Results/Deals without scrolling up. -->
+  <div class="vehicle-tabs vehicle-tabs-bottom">
+    <button class="vehicle-tab-btn active" data-tab="input">🔢 Input</button>
+    <button class="vehicle-tab-btn" data-tab="results">✅ Results</button>
+    <button class="vehicle-tab-btn" data-tab="deals">📋 Deals</button>
+  </div>
 </div>`;
       }
 
@@ -17895,20 +17913,25 @@ body.dark-theme {
           });
         });
 
-        // Tab switching
+        // Tab switching — top and bottom bars stay in sync (both bars share
+        // the .vehicle-tab-btn class, so activate ALL buttons for the chosen
+        // tab, not just the clicked one).
         card.querySelectorAll(".vehicle-tab-btn").forEach(function (tabBtn) {
           tabBtn.addEventListener("click", function () {
+            var tab = tabBtn.dataset.tab;
             card.querySelectorAll(".vehicle-tab-btn").forEach(function (b) {
-              b.classList.remove("active");
+              b.classList.toggle("active", b.dataset.tab === tab);
             });
             card.querySelectorAll(".vehicle-tab-content").forEach(function (c) {
-              c.classList.remove("active");
+              c.classList.toggle("active", c.dataset.tab === tab);
             });
-            tabBtn.classList.add("active");
-            var target = card.querySelector(
-              '.vehicle-tab-content[data-tab="' + tabBtn.dataset.tab + '"]',
-            );
-            if (target) target.classList.add("active");
+            // Clicking a BOTTOM-bar tab scrolls the card back into view so you
+            // land at the top of the newly shown tab (the whole point of the
+            // bottom bar — jump back to Input without manual scrolling).
+            if (tabBtn.closest(".vehicle-tabs-bottom")) {
+              var top = card.getBoundingClientRect().top + window.pageYOffset - 10;
+              window.scrollTo({ top: top, behavior: "smooth" });
+            }
           });
         });
 
@@ -20302,19 +20325,13 @@ body.dark-theme {
         entry.results = result;
         renderResults(card, result, dealType);
 
-        // Switch to results tab
+        // Switch to results tab (sync BOTH the top and bottom tab bars)
         card.querySelectorAll(".vehicle-tab-btn").forEach(function (b) {
-          b.classList.remove("active");
+          b.classList.toggle("active", b.dataset.tab === "results");
         });
         card.querySelectorAll(".vehicle-tab-content").forEach(function (c) {
-          c.classList.remove("active");
+          c.classList.toggle("active", c.dataset.tab === "results");
         });
-        var resTab = card.querySelector('.vehicle-tab-btn[data-tab="results"]');
-        if (resTab) resTab.classList.add("active");
-        var resContent = card.querySelector(
-          '.vehicle-tab-content[data-tab="results"]',
-        );
-        if (resContent) resContent.classList.add("active");
         // Pairwise auto-render disabled — its data was redundant with the
         // Vehicle Comparison matrix (per-vehicle pairwise W-L tally now lives
         // in the canonical matrix as a single row). Function is kept for

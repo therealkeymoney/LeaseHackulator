@@ -20507,8 +20507,21 @@ body.dark-theme {
           var dasDisplay = r.failed ? '—' : fmt(r.das);
           var adjCapDisplay = r.failed ? '—' : fmt(r.adjCap);
           var totalPayDisplay = r.failed ? '—' : fmt(r.totalPay);
-          var buyoutDisplay = r.failed ? '—' : (r.buyout > 0 ? fmt(r.buyout) : '—');
-          var chkBackDisplay = (r.failed || r.chkBack <= 0) ? '—' : fmt(r.chkBack);
+          // Check-back is a CHOICE: take the equity as a cash check (buyout
+          // stays at full residual) OR apply it to the buyout (buyout drops by
+          // the check-back). Total Cost is identical either way — only where
+          // the equity lands changes — so show the buyout as a RANGE.
+          var buyoutLow = Math.max(0, r.buyout - r.chkBack);
+          var buyoutDisplay;
+          if (r.failed || r.buyout <= 0) {
+            buyoutDisplay = '—';
+          } else if (r.chkBack > 0 && buyoutLow < r.buyout - 0.5) {
+            buyoutDisplay = '<span title="Check-back is your choice: take the full ' + fmt(r.chkBack) + ' as a cash check and the buyout stays at the full residual (' + fmt(r.buyout) + '), or apply that equity to the buyout and it drops to ' + fmt(buyoutLow) + '. Total Cost is the same either way.">'
+              + fmt(buyoutLow) + '<span style="color:#94a3b8;">–</span>' + fmt(r.buyout) + '</span>';
+          } else {
+            buyoutDisplay = fmt(r.buyout);
+          }
+          var chkBackDisplay = (r.failed || r.chkBack <= 0) ? '—' : ('up to ' + fmt(r.chkBack));
           var tcoDisplay = (r.failed || r.tco <= 0)
             ? '<span style="color:#94a3b8;">—</span>'
             : fmt(r.tco);
@@ -21196,21 +21209,33 @@ body.dark-theme {
             " − residual " +
             fmt(result.residualValue) +
             ")</span></div>" +
-            "<div><strong>Buyout Cost:</strong> " +
-            fmt(buyoutCost) +
-            ' <span style="font-size:0.7rem;color:var(--muted);">(residual ' +
-            fmt(result.residualValue) +
-            " + disp " +
-            fmt(dispFee) +
-            (equityAtBuyout > 0
-              ? " − equity@buyout " + fmt(equityAtBuyout)
-              : "") +
-            ")</span></div>" +
-            (checkBackRebate > 0
-              ? '<div style="color:#16a34a;"><strong>Check-Back Rebate:</strong> −' +
-                fmt(checkBackRebate) +
-                ' <span style="font-size:0.7rem;color:var(--muted);">(applied as TCO offset / MSRP rebate; not against buyout)</span></div>'
-              : "") +
+            // Buyout is a single figure normally, but under a check-back it
+            // becomes a RANGE: you can take the check-back as cash (buyout stays
+            // at the full residual) or apply that equity to the buyout (it drops
+            // by the check-back amount). Total Cost is identical either way.
+            (function () {
+              var buyoutLow = Math.max(0, buyoutCost - checkBackRebate);
+              if (checkBackRebate > 0 && buyoutLow < buyoutCost - 0.5) {
+                return "<div><strong>Buyout Cost:</strong> " +
+                  fmt(buyoutLow) + ' <span style="color:#94a3b8;">–</span> ' + fmt(buyoutCost) +
+                  ' <span style="font-size:0.7rem;color:var(--muted);">(range: apply the check-back to buyout → ' +
+                  fmt(buyoutLow) + '; take it as a cash check → full residual ' + fmt(buyoutCost) + ')</span></div>' +
+                  '<div style="color:#16a34a;"><strong>Check-Back Rebate:</strong> up to −' + fmt(checkBackRebate) +
+                  ' <span style="font-size:0.7rem;color:var(--muted);">(received as a check / TCO offset. You may instead route any part of it to the buyout, dropping it toward ' +
+                  fmt(buyoutLow) + ' — you can\'t do both. Total Cost is the same regardless.)</span></div>';
+              }
+              return "<div><strong>Buyout Cost:</strong> " +
+                fmt(buyoutCost) +
+                ' <span style="font-size:0.7rem;color:var(--muted);">(residual ' +
+                fmt(result.residualValue) + " + disp " + fmt(dispFee) +
+                (equityAtBuyout > 0 ? " − equity@buyout " + fmt(equityAtBuyout) : "") +
+                ")</span></div>" +
+                (checkBackRebate > 0
+                  ? '<div style="color:#16a34a;"><strong>Check-Back Rebate:</strong> −' +
+                    fmt(checkBackRebate) +
+                    ' <span style="font-size:0.7rem;color:var(--muted);">(applied as TCO offset / MSRP rebate; not against buyout)</span></div>'
+                  : "");
+            })() +
             '<hr style="border:none;border-top:1px solid #e5e7eb;margin:6px 0;">' +
             '<div style="font-weight:700;color:var(--secondary);margin-bottom:4px;">— Monthly Payment —</div>' +
             "<div><strong>Monthly Depreciation:</strong> " +
